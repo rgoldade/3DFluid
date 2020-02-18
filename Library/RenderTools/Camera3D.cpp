@@ -3,7 +3,7 @@
 namespace FluidSim3D::RenderTools
 {
 
-Target3D::Target3D(const Vec3f& target,
+Camera3D::Camera3D(const Vec3f& target,
 					float targetDistance,
 					float heading,
 					float pitch,
@@ -23,7 +23,7 @@ Target3D::Target3D(const Vec3f& target,
 	, myFaceClippingDistance(farClippingDistance)
 	{}
 
-void Target3D::mouse(int button, int state, int x, int y)
+void Camera3D::mouse(int button, int state, int x, int y)
 {
 	if (state == GLUT_UP)
 		myMouseAction = MouseAction::INACTIVE;
@@ -37,7 +37,7 @@ void Target3D::mouse(int button, int state, int x, int y)
 	myOldMouseCoord = Vec2i(x, y);
 }
 
-void Target3D::drag(int x, int y)
+void Camera3D::drag(int x, int y)
 {
 	switch (myMouseAction)
 	{
@@ -71,7 +71,7 @@ void Target3D::drag(int x, int y)
 	glutPostRedisplay();
 }
 
-void Target3D::default()
+void Camera3D::reset()
 {
 	myTarget = myDefaultTarget;
 	myDistance = myDefaultDistance;
@@ -79,7 +79,7 @@ void Target3D::default()
 	myPitch = myDefaultPitch;
 }
 
-void Target3D::transform(const Vec2i& windowSize)
+void Camera3D::transform(const Vec2i& windowSize)
 {
 	glViewport(0, 0, GLsizei(windowSize[0]), GLsizei(windowSize[1]));
 

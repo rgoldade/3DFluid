@@ -1,6 +1,7 @@
 #ifndef LIBRARY_PREDICATES_H
 #define LIBRARY_PREDICATES_H
 
+#include "GridUtilities.h"
 #include "Vec.h"
 
 namespace FluidSim3D::SurfaceTrackers
@@ -37,7 +38,6 @@ insphere(const REAL *pa,
 		 const REAL *pd,
 		 const REAL *pe);
 
-enum class Axis { XAXIS, YAXIS, ZAXIS };
 enum class IntersectionLabels { YES, ON, NO };
 
 // An inner helper function that tests for an intersection between the z-axis grid edge

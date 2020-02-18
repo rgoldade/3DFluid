@@ -99,7 +99,7 @@ int main(int argc, char** argv)
 	planeDX = std::min(float(1) / float(gridSize[0]), std::min(float(1) / float(gridSize[1]), float(1) / float(gridSize[2])));
 
 	renderer = std::make_unique<Renderer>("Level set test", Vec2i(1000), Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]), topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
-	camera = std::make_unique<Target3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
+	camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
 	renderer->setCamera(camera.get());
 
 	simulator = std::make_unique<DeformationField>(0., 3.);

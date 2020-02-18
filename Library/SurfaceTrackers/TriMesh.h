@@ -127,6 +127,8 @@ public:
 		else if (myVertices[2] == index)
 			return myVertices[0];
 		else assert(false);
+
+		return -1;
 	}
 
 	bool replaceVertex(int oldIndex, int newIndex)

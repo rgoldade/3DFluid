@@ -176,7 +176,7 @@ int main(int argc, char **argv)
 	Vec3f center = .5 * (topRightCorner + bottomLeftCorner);
 
 	renderer = std::make_unique<Renderer>("Viscous liquid simulator", Vec2i(1000), Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]), topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
-	camera = std::make_unique<Target3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
+	camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
 	renderer->setCamera(camera.get());
 
 	// Build static boundary geometry

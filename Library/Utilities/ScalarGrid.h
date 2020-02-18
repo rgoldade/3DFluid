@@ -1,6 +1,7 @@
 #ifndef LIBRARY_SCALARGRID_H
 #define LIBRARY_SCALARGRID_H
 
+#include "GridUtilities.h"
 #include "Renderer.h"
 #include "Transform.h"
 #include "UniformGrid.h"
@@ -25,7 +26,6 @@
 namespace FluidSim3D::Utilities
 {
 using namespace RenderTools;
-using namespace SurfaceTrackers;
 
 // Separating the grid settings out from the grid class
 // means that we don't have to deal with templating when
@@ -115,20 +115,20 @@ public:
 	// Global multiply operator
 	void operator*(const T& scalar)
 	{
-		tbb::parallel_for(tbb::blocked_range<int>(0, this->myGrid.size(), lightItemsGrainSize), [&](const tbb::blocked_range<int>& range)
+		tbb::parallel_for(tbb::blocked_range<int>(0, this->myGrid.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 		{
-			for (int index : range)
-				this->myGrid[index] *= s;
+			for (int index = range.begin(); index != range.end(); ++index)
+				this->myGrid[index] *= scalar;
 		});
 	}
 
 	// Global add operator
 	void operator+(const T& scalar)
 	{
-		tbb::parallel_for(tbb::blocked_range<int>(0, this->myGrid.size(), lightItemsGrainSize), [&](const tbb::blocked_range<int>& range)
+		tbb::parallel_for(tbb::blocked_range<int>(0, this->myGrid.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 		{
-			for (int index : range)
-				this->myGrid[index] += s;
+			for (int index = range.begin(); index != range.end(); ++index)
+				this->myGrid[index] += scalar;
 		});
 	}
 
@@ -167,15 +167,14 @@ public:
 	{
 		using MinMaxPair = std::pair<T, T>;
 
-		auto result = std::minmax_element(this->myGrid.begin(), this->myGrid.end());
-		min = *(result.first); max = *(result.second);
-		MinMaxPair result = tbb::parallel_reduce(tbb::blocked_range<int>(0, this->myGrid.voxelCount(), lightItemsGrainSize),
+		MinMaxPair result = tbb::parallel_reduce(tbb::blocked_range<int>(0, this->myGrid.voxelCount(), tbbLightGrainSize),
 												MinMaxPair(std::numeric_limits<T>::max(), std::numeric_limits<T>::lowest()),
 		[&](const tbb::blocked_range<int>& range, MinMaxPair valuePair) -> MinMaxPair
 		{
 			T localMin = valuePair.first;
 			T localMax = valuePair.second;
-			for (int index : range)
+
+			for (int index = range.begin(); index != range.end(); ++index)
 			{
 				localMin = std::min(localMin, this->myGrid[index]);
 				localMax = std::max(localMax, this->myGrid[index]);
@@ -190,7 +189,7 @@ public:
 		return std::pair<T, T>(result.first, result.second);
 	}
 
-	T interp(double x, double y, double z, bool isIndexSpace = false) const { return interp(Vec3f(x, y, z), isIndexSpace); }
+	T interp(float x, float y, float z, bool isIndexSpace = false) const { return interp(Vec3f(x, y, z), isIndexSpace); }
 	T interp(const Vec3f& samplePoint, bool isIndexSpace = false) const;
 
 	// Converters between world space and local index space
@@ -424,23 +423,23 @@ void ScalarGrid<T>::drawGridPlane(Renderer& renderer, Axis planeAxis, float posi
 template<typename T>
 void ScalarGrid<T>::drawSamplePoints(Renderer& renderer, const Vec3f& colour, float sampleSize) const
 {
-	tbb::enumerable_thread_specific<Vec3f> parallelSamplePoints;
+	tbb::enumerable_thread_specific<std::vector<Vec3f>> parallelSamplePoints;
 
-	tbb::parallel_for(tbb::blocked_range<int>(0, this->myGrid.size(), lightItemsGrainSize), [&](const tbb::blocked_range& range)
+	tbb::parallel_for(tbb::blocked_range<int>(0, this->myGrid.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 	{
 		auto& localSamplePoints = parallelSamplePoints.local();
 
-		for (int cellIndex : range)
+		for (int sampleIndex = range.begin(); sampleIndex != range.end(); ++sampleIndex)
 		{
-			Vec3i cell = unflatten(cellIndex);
+			Vec3i sampleCoord = this->unflatten(sampleIndex);
 
-			Vec3f indexPoint(cell);
-			Vec3f worldPoint = indexToWorld(indexPoint);
+			Vec3f worldPoint = indexToWorld(Vec3f(sampleCoord));
 
 			localSamplePoints.push_back(worldPoint);
 		}
 	});
 
+	std::vector<Vec3f> samplePoints;
 	mergeLocalThreadVectors(samplePoints, parallelSamplePoints);
 
 	renderer.addPoints(samplePoints, colour, sampleSize);
@@ -463,28 +462,28 @@ void ScalarGrid<T>::drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, c
 		break;
 
 	case SampleType::XFACE:
-		worldPoint = indexToWorld(indexPoint + Vec3f(cellToFace(cell, 0 /*face axis*/, 0 /*direction*/)));
+		worldPoint = indexToWorld(Vec3f(cellToFace(cell, 0 /*face axis*/, 0 /*direction*/)));
 		samplePoints.push_back(worldPoint);
 
-		worldPoint = indexToWorld(indexPoint + Vec3f(cellToFace(cell, 0 /*face axis*/, 1 /*direction*/)));
+		worldPoint = indexToWorld(Vec3f(cellToFace(cell, 0 /*face axis*/, 1 /*direction*/)));
 		samplePoints.push_back(worldPoint);
 
 		break;
 
 	case SampleType::YFACE:
-		worldPoint = indexToWorld(indexPoint + Vec3f(cellToFace(cell, 1 /*axis*/, 0 /*direction*/)));
+		worldPoint = indexToWorld(Vec3f(cellToFace(cell, 1 /*axis*/, 0 /*direction*/)));
 		samplePoints.push_back(worldPoint);
 
-		worldPoint = indexToWorld(indexPoint + Vec3f(cellToFace(cell, 1 /*axis*/, 1 /*direction*/)));
+		worldPoint = indexToWorld(Vec3f(cellToFace(cell, 1 /*axis*/, 1 /*direction*/)));
 		samplePoints.push_back(worldPoint);
 
 		break;
 
 	case SampleType::ZFACE:
-		worldPoint = indexToWorld(indexPoint + Vec3f(cellToFace(cell, 2 /*axis*/, 0 /*direction*/)));
+		worldPoint = indexToWorld(Vec3f(cellToFace(cell, 2 /*axis*/, 0 /*direction*/)));
 		samplePoints.push_back(worldPoint);
 
-		worldPoint = indexToWorld(indexPoint + Vec3f(cellToFace(cell, 2 /*axis*/, 1 /*direction*/)));
+		worldPoint = indexToWorld(Vec3f(cellToFace(cell, 2 /*axis*/, 1 /*direction*/)));
 		samplePoints.push_back(worldPoint);
 
 		break;
@@ -492,7 +491,7 @@ void ScalarGrid<T>::drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, c
 	case SampleType::XEDGE:
 		for (int edgeIndex = 0; edgeIndex < 4; ++edgeIndex)
 		{
-			worldPoint = indexToWorld(indexPoint + Vec3f(cellToEdge(cell, 0 /*edge axis*/, edgeIndex)));
+			worldPoint = indexToWorld(Vec3f(cellToEdge(cell, 0 /*edge axis*/, edgeIndex)));
 			samplePoints.push_back(worldPoint);
 		}
 
@@ -501,7 +500,7 @@ void ScalarGrid<T>::drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, c
 	case SampleType::YEDGE:
 		for (int edgeIndex = 0; edgeIndex < 4; ++edgeIndex)
 		{
-			worldPoint = indexToWorld(indexPoint + Vec3f(cellToEdge(cell, 1 /*edge axis*/, edgeIndex)));
+			worldPoint = indexToWorld(Vec3f(cellToEdge(cell, 1 /*edge axis*/, edgeIndex)));
 			samplePoints.push_back(worldPoint);
 		}
 
@@ -510,7 +509,7 @@ void ScalarGrid<T>::drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, c
 	case SampleType::ZEDGE:
 		for (int edgeIndex = 0; edgeIndex < 4; ++edgeIndex)
 		{
-			worldPoint = indexToWorld(indexPoint + Vec3f(cellToEdge(cell, 2 /*edge axis*/, edgeIndex)));
+			worldPoint = indexToWorld(Vec3f(cellToEdge(cell, 2 /*edge axis*/, edgeIndex)));
 			samplePoints.push_back(worldPoint);
 		}
 
@@ -519,14 +518,14 @@ void ScalarGrid<T>::drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, c
 	case SampleType::NODE:
 		for (int nodeIndex = 0; nodeIndex < 8; ++nodeIndex)
 		{
-			worldPoint = indexToWorld(indexPoint + Vec3f(cellToNodex(cell, nodeIndex)));
+			worldPoint = indexToWorld(Vec3f(cellToNode(cell, nodeIndex)));
 			samplePoints.push_back(worldPoint);
 		}
 
 		break;
 	}
 
-	renderer.add_points(samplePoints, colour, size);
+	renderer.addPoints(samplePoints, colour, sampleSize);
 }
 
 template<typename T>
@@ -565,7 +564,7 @@ void ScalarGrid<T>::drawSupersampledValuesVolume(Renderer& renderer, float sampl
 	Vec3f start(0);
 	Vec3f end = Vec3f(this->mySize) - Vec3f(1);
 
-	drawSuperSampledValues(renderer, start, end, Vec3f(sampleRadius), samples, sampleSize);
+	drawSupersampledValues(renderer, start, end, Vec3f(sampleRadius), samples, sampleSize);
 }
 
 // Warning: there is no protection here for ASSERT border types

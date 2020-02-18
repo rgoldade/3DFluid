@@ -22,6 +22,7 @@
 namespace FluidSim3D::SimTools
 {
 
+using namespace SurfaceTrackers;
 using namespace Utilities;
 
 void ViscositySolver(const float dt,

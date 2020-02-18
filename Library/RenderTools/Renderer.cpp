@@ -119,7 +119,7 @@ void Renderer::keyboard(unsigned char key, int x, int y)
 	{
 		myCurrentScreenOrigin = myDefaultScreenOrigin;
 		myCurrentScreenHeight = myDefaultScreenHeight;
-		myCamera->default();
+		myCamera->reset();
 		glutPostRedisplay();
 	}
 }

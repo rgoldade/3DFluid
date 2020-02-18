@@ -1,6 +1,6 @@
 #include <Eigen/Core>
 
-#include "tbb\tbb.h"
+#include "tbb/tbb.h"
 
 #include "LevelSet.h"
 #include "PressureProjection.h"

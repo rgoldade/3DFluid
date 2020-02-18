@@ -1,5 +1,5 @@
-#ifndef LIBRARY_COMPUTEWEIGHTS_H
-#define LIBRARY_COMPUTEWEIGHTS_H
+#ifndef LIBRARY_COMPUTE_WEIGHTS_H
+#define LIBRARY_COMPUTE_WEIGHTS_H
 
 #include "LevelSet.h"
 #include "ScalarGrid.h"
@@ -19,6 +19,8 @@
 
 namespace FluidSim3D::SimTools
 {
+
+using namespace SurfaceTrackers;
 
 VectorGrid<float> computeGhostFluidWeights(const LevelSet& surface);
 

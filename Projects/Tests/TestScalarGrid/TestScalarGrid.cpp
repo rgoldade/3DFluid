@@ -10,7 +10,6 @@
 #include "VectorGrid.h"
 
 using namespace FluidSim3D::RenderTools;
-using namespace FluidSim3D::SurfaceTrackers;
 using namespace FluidSim3D::Utilities;
 
 static std::unique_ptr<Renderer> renderer;
@@ -65,7 +64,7 @@ int main(int argc, char** argv)
 	planeDX = std::min(float(1) / float(gridSize[0]), std::min(float(1) / float(gridSize[1]), float(1) / float(gridSize[2])));
 
 	renderer = std::make_unique<Renderer>("Scalar grid test", Vec2i(1000), Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]), topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
-	camera = std::make_unique<Target3D>(.5 * (topRightCorner + bottomLeftCorner), 20., 0., 0.);
+	camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 20., 0., 0.);
 	renderer->setCamera(camera.get());
 	
 	testScalarGrid = std::make_unique<ScalarGrid<float>>(xform, gridSize);

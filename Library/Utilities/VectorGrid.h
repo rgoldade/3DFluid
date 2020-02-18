@@ -32,7 +32,6 @@ namespace VectorGridSettings
 template<typename T>
 class VectorGrid
 {
-	using ScalarGrid = ScalarGrid<T>;
 	using ScalarSampleType = ScalarGridSettings::SampleType;
 	using ScalarBorderType = ScalarGridSettings::BorderType;
 	using SampleType = VectorGridSettings::SampleType;
@@ -57,27 +56,27 @@ public:
 		switch (sampleType)
 		{
 		case SampleType::CENTER:
-			myGrids[0] = ScalarGrid(xform, size, initialValue, ScalarSampleType::CENTER, borderType);
-			myGrids[1] = ScalarGrid(xform, size, initialValue, ScalarSampleType::CENTER, borderType);
-			myGrids[2] = ScalarGrid(xform, size, initialValue, ScalarSampleType::CENTER, borderType);
+			myGrids[0] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::CENTER, borderType);
+			myGrids[1] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::CENTER, borderType);
+			myGrids[2] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::CENTER, borderType);
 			break;
 		// If the grid is 2x2x2, it has 3x2x2 x-aligned faces.
 		// This is handled inside of the ScalarGrid
 		case SampleType::STAGGERED:
-			myGrids[0] = ScalarGrid(xform, size, initialValue, ScalarSampleType::XFACE, borderType);
-			myGrids[1] = ScalarGrid(xform, size, initialValue, ScalarSampleType::YFACE, borderType);
-			myGrids[2] = ScalarGrid(xform, size, initialValue, ScalarSampleType::ZFACE, borderType);
+			myGrids[0] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::XFACE, borderType);
+			myGrids[1] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::YFACE, borderType);
+			myGrids[2] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::ZFACE, borderType);
 			break;
 		// If the grid is 2x2x2, it has 3x3x3 nodes. This is handled inside of the ScalarGrid
 		case SampleType::NODE:
-			myGrids[0] = ScalarGrid(xform, size, initialValue, ScalarSampleType::NODE, borderType);
-			myGrids[1] = ScalarGrid(xform, size, initialValue, ScalarSampleType::NODE, borderType);
-			myGrids[2] = ScalarGrid(xform, size, initialValue, ScalarSampleType::NODE, borderType);
+			myGrids[0] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::NODE, borderType);
+			myGrids[1] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::NODE, borderType);
+			myGrids[2] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::NODE, borderType);
 			break;
 		case SampleType::EDGE:
-			myGrids[0] = ScalarGrid(xform, size, initialValue, ScalarSampleType::XEDGE, borderType);
-			myGrids[1] = ScalarGrid(xform, size, initialValue, ScalarSampleType::YEDGE, borderType);
-			myGrids[2] = ScalarGrid(xform, size, initialValue, ScalarSampleType::ZEDGE, borderType);
+			myGrids[0] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::XEDGE, borderType);
+			myGrids[1] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::YEDGE, borderType);
+			myGrids[2] = ScalarGrid<T>(xform, size, initialValue, ScalarSampleType::ZEDGE, borderType);
 		}
 	}
 
@@ -96,12 +95,12 @@ public:
 		return true;
 	}
 
-	ScalarGrid& grid(int axis)
+	ScalarGrid<T>& grid(int axis)
 	{
 		return myGrids[axis];
 	}
 
-	const ScalarGrid& grid(int axis) const
+	const ScalarGrid<T>& grid(int axis) const
 	{
 		return myGrids[axis];
 	}
@@ -169,7 +168,7 @@ public:
 								const Vec3f& colour0 = Vec3f(1, 0, 0),
 								const Vec3f& colour1 = Vec3f(0, 1, 0),
 								const Vec3f& colour2 = Vec3f(0, 0, 1),
-								const Vec3f& sampleSizes = Vec3R(5.)) const;
+								const Vec3f& sampleSizes = Vec3f(5.)) const;
 
 	void drawSamplePointVectors(Renderer& renderer, Axis planeAxis, float position,
 									const Vec3f& colour = Vec3f(0,0,1), float length = .25) const;
@@ -188,7 +187,7 @@ private:
 		return myXform.indexToWorld(point);
 	}
 
-	std::array<ScalarGrid, 3> myGrids;
+	std::array<ScalarGrid<T>, 3> myGrids;
 
 	Transform myXform;
 
@@ -321,12 +320,12 @@ void VectorGrid<T>::drawSamplePointVectors(Renderer& renderer, Axis planeAxis, f
 		end[2] = start[2] + 1;
 	}
 
-	std::vector<Vec3R> startPoints;
-	std::vector<Vec3R> endPoints;
+	std::vector<Vec3f> startPoints;
+	std::vector<Vec3f> endPoints;
 
 	forEachVoxelRange(start, end, [&](const Vec3i& cell)
 	{
-		Vec3R worldPoint = indexToWorld(Vec3R(cell) + Vec3R(.5));
+		Vec3f worldPoint = indexToWorld(Vec3f(cell) + Vec3f(.5));
 		startPoints.push_back(worldPoint);
 
 		Vec<3, T> sampleVector = interp(worldPoint);
@@ -350,4 +349,5 @@ void VectorGrid<T>::drawSuperSampledValuesPlane(Renderer& renderer, Axis gridAxi
 }
 
 }
+
 #endif

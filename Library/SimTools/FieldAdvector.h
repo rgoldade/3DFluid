@@ -1,7 +1,7 @@
 #ifndef LIBRARY_FIELD_ADVECTOR_H
 #define LIBRARY_FIELD_ADVECTOR_H
 
-#include "tbb\tbb.h"
+#include "tbb/tbb.h"
 
 #include "Integrator.h"
 #include "ScalarGrid.h"

@@ -2,6 +2,9 @@
 #define LIBRARY_VEC_H
 
 #include <array>
+#include <cmath>
+
+#include "Utilities.h"
 
 ///////////////////////////////////
 //
@@ -29,7 +32,6 @@ public:
 		myVec.fill(val);
 	}
 
-	// TODO: Figure out a variadic method that actually works!
 	constexpr Vec<N, T>(T v0, T v1) : myVec({ v0, v1 })
 	{
 		static_assert(N == 2, "Vector dimensions must match");

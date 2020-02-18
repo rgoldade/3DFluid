@@ -23,19 +23,8 @@ using namespace Utilities;
 
 class Camera3D
 {
-
 public:
-	virtual void mouse(int button, int state, int x, int y) = 0;
-	virtual void drag(int x, int y) = 0;
-
-	virtual void default() = 0;
-	virtual void transform(const Vec2i& windowSize) = 0;
-};
-
-class Target3D : public virtual Camera3D
-{
-public:
-	Target3D(const Vec3f& target = Vec3f(0),
+	Camera3D(const Vec3f& target = Vec3f(0),
 				float targetDistance = 1,
 				float heading = 0,
 				float pitch = 0,
@@ -46,7 +35,7 @@ public:
 	void mouse(int button, int state, int x, int y);
 	void drag(int x, int y);
 
-	void default();
+	void reset();
 	void transform(const Vec2i& windowSize);
 
 private:

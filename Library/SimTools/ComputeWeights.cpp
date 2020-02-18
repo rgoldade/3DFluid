@@ -1,6 +1,7 @@
 #include <array>
 
-#include "tbb\tbb.h"
+#include "tbb/tbb.h"
+
 #include "ComputeWeights.h"
 
 namespace FluidSim3D::SimTools
