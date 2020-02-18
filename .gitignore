@@ -1,0 +1,6 @@
+build*/*
+
+Projects/*
+!Projects/Simulations
+!Projects/Tests
+!Projects/CMakeLists.txt
