@@ -1,5 +1,5 @@
-#ifndef LIBRARY_VECTORGRID_H
-#define LIBRARY_VECTORGRID_H
+#ifndef LIBRARY_VECTOR_GRID_H
+#define LIBRARY_VECTOR_GRID_H
 
 #include "ScalarGrid.h"
 #include "Transform.h"
@@ -126,15 +126,15 @@ public:
 
 	Vec<3, T> interp(float x, float y, float z) const { return interp(Vec3f(x, y, z)); }
 
-	Vec<3, T> interp(const Vec3f& pos) const
+	Vec<3, T> interp(const Vec3f& samplePoint) const
 	{
-		return Vec<3, T>(interp(pos, 0), interp(pos, 1), interp(pos, 2));
+		return Vec<3, T>(interp(samplePoint, 0), interp(samplePoint, 1), interp(samplePoint, 2));
 	}
 
 	T interp(float x, float y, float z, int axis) const { return interp(Vec3f(x, y, z), axis); }
-	T interp(const Vec3f& pos, int axis) const
+	T interp(const Vec3f& samplePoint, int axis) const
 	{
-		return myGrids[axis].interp(pos);
+		return myGrids[axis].interp(samplePoint);
 	}
 
 	// World space vs. index space converters need to be done at the 
@@ -154,6 +154,7 @@ public:
 	Transform xform() const { return myXform; }
 
 	Vec3i size(int axis) const { return myGrids[axis].size(); }
+	Vec2i gridSize() const { return myGridSize; }
 	SampleType sampleType() const { return mySampleType; }
 
 	// Rendering methods
@@ -162,7 +163,7 @@ public:
 							const Vec3f& colour0 = Vec3f(1, 0, 0),
 							const Vec3f& colour1 = Vec3f(0, 1, 0),
 							const Vec3f& colour2 = Vec3f(0, 0, 1),
-							const Vec3f& sizes = Vec3f(5.)) const;
+							const Vec3f& sampleSizes = Vec3f(5.)) const;
 
 	void drawSamplePointCell(Renderer& renderer, const Vec3i& cell,
 								const Vec3f& colour0 = Vec3f(1, 0, 0),

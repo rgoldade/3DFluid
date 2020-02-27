@@ -1,5 +1,7 @@
 #include "TriMesh.h"
 
+#include <iostream>
+
 namespace FluidSim3D::SurfaceTrackers
 {
 

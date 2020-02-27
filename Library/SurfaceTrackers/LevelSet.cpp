@@ -539,12 +539,9 @@ Vec3f LevelSet::interpolateInterface(const Vec3i& startPoint, const Vec3i& endPo
 	assert((myPhiGrid(startPoint) <= 0 && myPhiGrid(endPoint) > 0) ||
 			(myPhiGrid(startPoint) > 0 && myPhiGrid(endPoint) <= 0));
 
-	if (myPhiGrid(startPoint) == 0 && myPhiGrid(endPoint) == 0)
-		return Vec3f(startPoint);
-
 	// Find weight to zero isosurface
 	float s = myPhiGrid(startPoint) / (myPhiGrid(startPoint) - myPhiGrid(endPoint));
-	s = Utilities::clamp(s, float(0), float(1));
+	s = clamp(s, float(0), float(1));
 
 	Vec3f dx = Vec3f(endPoint - startPoint);
 	return Vec3f(startPoint) + s * dx;
@@ -780,7 +777,7 @@ void LevelSet::reinitFastMarching(UniformGrid<VisitedCellLabels>& reinitializedC
 	};
 
 	// Load up the BFS queue with the unvisited cells next to the finished ones
-	typedef std::pair<Vec3i, float> Node;
+	using Node = std::pair<Vec3i, float>;
 	auto cmp = [](const Node& a, const Node& b) -> bool { return std::fabs(a.second) > std::fabs(b.second); };
 	std::priority_queue<Node, std::vector<Node>, decltype(cmp)> marchingQ(cmp);
 
@@ -801,7 +798,7 @@ void LevelSet::reinitFastMarching(UniformGrid<VisitedCellLabels>& reinitializedC
 						float dist = solveEikonal(adjacentCell);
 						assert(dist >= 0);
 
-						myPhiGrid(adjacentCell) = myPhiGrid(adjacentCell) <= 0 ? -dist : dist;
+						myPhiGrid(adjacentCell) = myPhiGrid(adjacentCell) < 0 ? -dist : dist;
 
 						Node node(adjacentCell, dist);
 

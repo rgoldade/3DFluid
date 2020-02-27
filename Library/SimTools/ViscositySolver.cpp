@@ -1,5 +1,7 @@
 #include "ViscositySolver.h"
 
+#include <iostream>
+
 #include <Eigen/Sparse>
 
 #include "ComputeWeights.h"
@@ -11,7 +13,7 @@ namespace FluidSim3D::SimTools
 using SolveReal = double;
 using Vector = Eigen::VectorXd;
 
-void ViscositySolver(const float dt,
+void ViscositySolver(float dt,
 						const LevelSet& surface,
 						VectorGrid<float>& velocity,
 						const LevelSet& solidSurface,
@@ -224,7 +226,6 @@ void ViscositySolver(const float dt,
 								{
 									SolveReal divergenceSign = (divergenceDirection == 0) ? -1 : 1;
 
-
 									for (int gradientAxis : {0, 1, 2})
 									{
 										if (gradientAxis == edgeAxis)
@@ -307,8 +308,6 @@ void ViscositySolver(const float dt,
 					assert(materialFaceLabels(face, faceAxis) == MaterialLabels::LIQUID_FACE);
 					velocity(face, faceAxis) = solutionVector(liquidFaceIndex);
 				}
-				/*else if (materialFaceLabels(face, faceAxis) == MaterialLabels::SOLID_FACE)
-					velocity(face, faceAxis) = solidVelocity(face, faceAxis);*/
 			}
 		});
 	}

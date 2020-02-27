@@ -1,7 +1,8 @@
 #ifndef LIBRARY_TRI_MESH_H
 #define LIBRARY_TRI_MESH_H
 
-#include <iostream>
+#include <algorithm>
+#include <vector>
 
 #include "tbb/tbb.h"
 
@@ -270,7 +271,7 @@ public:
 		});
 	}
 
-	void scale(const float s)
+	void scale(float s)
 	{
 		tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 		{

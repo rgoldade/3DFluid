@@ -1,5 +1,7 @@
 #include "EulerianLiquidSimulator.h"
 
+#include <iostream>
+
 #include "ComputeWeights.h"
 #include "ExtrapolateField.h"
 #include "PressureProjection.h"
@@ -138,15 +140,11 @@ void EulerianLiquidSimulator::advectOldPressure(float dt)
 {
 	auto velocityFunc = [&](float, const Vec3f& pos) { return myLiquidVelocity.interp(pos); };
 
-	{
-		FieldAvector<ScalarGrid<float>> pressureAdvector(myOldPressure);
+	ScalarGrid<float> tempPressure(myOldPressure.xform(), myOldPressure.size());
 
-		ScalarGrid<float> tempPressure(myOldPressure.xform(), myOldPressure.size());
+	advectField(dt, tempPressure, myOldPressure, velocityFunc, IntegrationOrder::RK3);
 
-		pressureAdvector.advectField(dt, tempPressure, velocityFunc, IntegrationOrder::RK3);
-
-		std::swap(myOldPressure, tempPressure);
-	}
+	std::swap(myOldPressure, tempPressure);
 }
 
 void EulerianLiquidSimulator::advectLiquidSurface(float dt, IntegrationOrder integrator)
@@ -176,10 +174,10 @@ void EulerianLiquidSimulator::advectViscosity(float dt, IntegrationOrder integra
 {
 	auto velocityFunc = [&](float, const Vec3f& point) { return myLiquidVelocity.interp(point); };
 
-	FieldAvector<ScalarGrid<float>> advector(myViscosity);
 	ScalarGrid<float> tempViscosity(myViscosity.xform(), myViscosity.size());
 
-	advector.advectField(dt, tempViscosity, velocityFunc, integrator);
+	advectField(dt, tempViscosity, myViscosity, velocityFunc, integrator);
+
 	std::swap(tempViscosity, myViscosity);
 }
 
@@ -190,10 +188,7 @@ void EulerianLiquidSimulator::advectLiquidVelocity(float dt, IntegrationOrder in
 	VectorGrid<float> tempVelocity(myLiquidSurface.xform(), myLiquidSurface.size(), VectorGridSettings::SampleType::STAGGERED);
 
 	for (int axis : {0, 1, 2})
-	{
-		FieldAvector<ScalarGrid<float>> advector(myLiquidVelocity.grid(axis));
-		advector.advectField(dt, tempVelocity.grid(axis), velocityFunc, integrator);
-	}
+		advectField(dt, tempVelocity.grid(axis), myLiquidVelocity.grid(axis), velocityFunc, integrator);
 
 	std::swap(myLiquidVelocity, tempVelocity);
 }

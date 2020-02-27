@@ -1,9 +1,12 @@
+#include "PressureProjection.h"
+
+#include <iostream>
+
 #include <Eigen/Core>
 
 #include "tbb/tbb.h"
 
 #include "LevelSet.h"
-#include "PressureProjection.h"
 
 namespace FluidSim3D::SimTools
 {

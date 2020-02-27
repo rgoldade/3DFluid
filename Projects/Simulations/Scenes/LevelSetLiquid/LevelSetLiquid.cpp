@@ -1,3 +1,4 @@
+#include <iostream>
 #include <memory>
 
 #include "Camera3D.h"
@@ -5,12 +6,10 @@
 #include "InitialGeometry.h"
 #include "LevelSet.h"
 #include "Renderer.h"
-#include "ScalarGrid.h"
 #include "Transform.h"
 #include "TriMesh.h"
 #include "Utilities.h"
 #include "Vec.h"
-#include "VectorGrid.h"
 
 using namespace FluidSim3D::RenderTools;
 using namespace FluidSim3D::SurfaceTrackers;
@@ -19,6 +18,7 @@ using namespace FluidSim3D::Utilities;
 
 static std::unique_ptr<Renderer> renderer;
 static std::unique_ptr<Camera3D> camera;
+static std::unique_ptr<EulerianLiquidSimulator> simulator;
 
 static int frameCount = 0;
 static bool runSimulation = false;
@@ -32,22 +32,21 @@ static float planePosition = .5;
 static float planeDX = .05;
 static Axis planeAxis = Axis::ZAXIS;
 
-static std::unique_ptr<EulerianLiquidSimulator> simulator;
-
 static LevelSet seedSurface;
 
 static Transform xform;
 
 static float seedTime = 0;
-static float seedPeriod = 1;
+static constexpr float seedPeriod = 1;
 static constexpr float dt = 1. / 30.;
+
+static constexpr float cfl = 5.;
 
 void display()
 {
 	if (runSimulation || runSingleTimestep)
 	{
 		std::cout << "\nStart of frame: " << frameCount << std::endl;
-		++frameCount;
 
 		float frameTime = 0.;
 		while (frameTime < dt)
@@ -59,7 +58,7 @@ void display()
 
 			if (speed > 1E-6)
 			{
-				float cflDt = 3. * xform.dx() / speed;
+				float cflDt = cfl * xform.dx() / speed;
 				if (localDt > cflDt)
 				{
 					localDt = cflDt;
@@ -85,6 +84,8 @@ void display()
 			seedTime += localDt;
 			frameTime += localDt;
 		}
+		std::cout << "\n\nEnd of frame: " << frameCount << "\n" << std::endl;
+		++frameCount;
 
 		runSingleTimestep = false;
 		isDisplayDirty = true;

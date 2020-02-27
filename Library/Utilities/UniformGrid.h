@@ -1,5 +1,5 @@
-#ifndef LIBRARY_UNIFORMGRID_H
-#define LIBRARY_UNIFORMGRID_H
+#ifndef LIBRARY_UNIFORM_GRID_H
+#define LIBRARY_UNIFORM_GRID_H
 
 #include <vector>
 

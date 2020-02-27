@@ -216,8 +216,7 @@ void Renderer::drawPrimitives() const
 	assert(myPoints.size() == myPointColours.size() && 
 			myPoints.size() == myPointSizes.size());
 
-	const int pointListSize = myPoints.size();
-	for (int pointListIndex = 0; pointListIndex < pointListSize; ++pointListIndex)
+	for (int pointListIndex = 0; pointListIndex < myPoints.size(); ++pointListIndex)
 	{
 		const Vec3f& pointColour = myPointColours[pointListIndex];
 		glColor3f(pointColour[0], pointColour[1], pointColour[2]);
@@ -225,11 +224,10 @@ void Renderer::drawPrimitives() const
 
 		glBegin(GL_POINTS);
 
-		const int pointSublistSize = myPoints[pointListIndex].size();
-		for (int pointIndex = 0; pointIndex < pointSublistSize; ++pointIndex)
+		for (int pointIndex = 0; pointIndex < myPoints[pointListIndex].size(); ++pointIndex)
 		{
 			const Vec3f& point = myPoints[pointListIndex][pointIndex];
-			glVertex3d(point[0], point[1], point[2]);
+			glVertex3f(point[0], point[1], point[2]);
 		}
 
 		glEnd();
@@ -239,24 +237,24 @@ void Renderer::drawPrimitives() const
 			myLineStartingPoints.size() == myLineColours.size() && 
 			myLineStartingPoints.size() == myLineWidths.size());
 
-	const int lineListSize = myLineStartingPoints.size();
-	for (int lineListIndex = 0; lineListIndex < lineListSize; ++lineListIndex)
+	for (int lineListIndex = 0; lineListIndex < myLineStartingPoints.size(); ++lineListIndex)
 	{
 		const Vec3f& lineColour = myLineColours[lineListIndex];
 		glColor3f(lineColour[0], lineColour[1], lineColour[2]);
+
+		glLineWidth(myLineWidths[lineListIndex]);
 
 		glBegin(GL_LINES);
 
 		assert(myLineStartingPoints[lineListIndex].size() == myLineEndingPoints[lineListIndex].size());
 
-		const int  lineSublistSize = myLineStartingPoints[lineListIndex].size();
-		for (int lineIndex = 0; lineIndex < lineSublistSize; ++lineIndex)
+		for (int lineIndex = 0; lineIndex < myLineStartingPoints[lineListIndex].size(); ++lineIndex)
 		{
 			const Vec3f& startPoint = myLineStartingPoints[lineListIndex][lineIndex];
-			glVertex3d(startPoint[0], startPoint[1], startPoint[2]);
+			glVertex3f(startPoint[0], startPoint[1], startPoint[2]);
 
 			const Vec3f& endPoint = myLineEndingPoints[lineListIndex][lineIndex];
-			glVertex3d(endPoint[0], endPoint[1], endPoint[2]);
+			glVertex3f(endPoint[0], endPoint[1], endPoint[2]);
 		}
 
 		glEnd();
@@ -294,8 +292,8 @@ void Renderer::drawPrimitives() const
 	const int triListSize = myTriFaceColours.size();
 	for (int triListIndex = 0; triListIndex < triListSize; ++triListIndex)
 	{
-		const Vec3f& triColour = myTriFaceColours[triListIndex];
-		glColor3f(triColour[0], triColour[1], triColour[2]);
+		const Vec3f& triFaceColour = myTriFaceColours[triListIndex];
+		glColor3f(triFaceColour[0], triFaceColour[1], triFaceColour[2]);
 
 		glBegin(GL_TRIANGLES);
 
@@ -310,11 +308,11 @@ void Renderer::drawPrimitives() const
 
 				assert(trianglePointIndex >= 0 &&  trianglePointIndex < myTriVertices[triListIndex].size());
 
-				const Vec3f& worldPoint = myTriVertices[triListIndex][trianglePointIndex];
-				glVertex3d(worldPoint[0], worldPoint[1], worldPoint[2]);
+				const Vec3f& vertexPoint = myTriVertices[triListIndex][trianglePointIndex];
+				glVertex3f(vertexPoint[0], vertexPoint[1], vertexPoint[2]);
 
 				const Vec3f& normal = myTriNormals[triListIndex][trianglePointIndex];
-				glNormal3d(normal[0], normal[1], normal[2]);
+				glNormal3f(normal[0], normal[1], normal[2]);
 			}
 		}
 

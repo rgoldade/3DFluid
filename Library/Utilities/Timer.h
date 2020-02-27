@@ -18,55 +18,57 @@
 
 namespace FluidSim3D::Utilities
 {
-	class Timer
+
+class Timer
+{
+public:
+	Timer()
 	{
-	public:
-		Timer()
-		{
-	#ifdef _MSC_VER
-			QueryPerformanceFrequency(&Frequency);
-			QueryPerformanceCounter(&StartingTime);
-	#else
-			struct timezone tz;
-			gettimeofday(&m_start, &tz);
-	#endif
-		}
+#ifdef _MSC_VER
+		QueryPerformanceFrequency(&Frequency);
+		QueryPerformanceCounter(&StartingTime);
+#else
+		struct timezone tz;
+		gettimeofday(&m_start, &tz);
+#endif
+	}
 
-		float stop()
-		{
-	#ifdef _MSC_VER
-			QueryPerformanceCounter(&EndingTime);
-			ElapsedMicroseconds.QuadPart = EndingTime.QuadPart - StartingTime.QuadPart;
+	float stop()
+	{
+#ifdef _MSC_VER
+		QueryPerformanceCounter(&EndingTime);
+		ElapsedMicroseconds.QuadPart = EndingTime.QuadPart - StartingTime.QuadPart;
 
-			return float(ElapsedMicroseconds.QuadPart) / float(Frequency.QuadPart);
-	#else
+		return float(ElapsedMicroseconds.QuadPart) / float(Frequency.QuadPart);
+#else
 
-			struct timezone tz;
-			gettimeofday(&m_end, &tz);
+		struct timezone tz;
+		gettimeofday(&m_end, &tz);
 
-			return (m_end.tv_sec + m_end.tv_usec * 1E-6) - (m_start.tv_sec + m_start.tv_usec * 1E-6);
-	#endif
-		}
+		return (m_end.tv_sec + m_end.tv_usec * 1E-6) - (m_start.tv_sec + m_start.tv_usec * 1E-6);
+#endif
+	}
 
-		void reset()
-		{
-	#ifdef _MSC_VER
-			QueryPerformanceFrequency(&Frequency);
-			QueryPerformanceCounter(&StartingTime);
-	#else
-			struct timezone tz;
-			gettimeofday(&m_start, &tz);
-	#endif
-		}
+	void reset()
+	{
+#ifdef _MSC_VER
+		QueryPerformanceFrequency(&Frequency);
+		QueryPerformanceCounter(&StartingTime);
+#else
+		struct timezone tz;
+		gettimeofday(&m_start, &tz);
+#endif
+	}
 
-	private:
+private:
 
-	#ifdef _MSC_VER
-		LARGE_INTEGER StartingTime, EndingTime, ElapsedMicroseconds;
-		LARGE_INTEGER Frequency;
-	#else
-		struct timeval m_start, m_end;
-	#endif
-	};
+#ifdef _MSC_VER
+	LARGE_INTEGER StartingTime, EndingTime, ElapsedMicroseconds;
+	LARGE_INTEGER Frequency;
+#else
+	struct timeval m_start, m_end;
+#endif
+};
+
 }
 #endif

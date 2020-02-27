@@ -1,2 +1,3 @@
+add_subdirectory(3DMeshRebuilder)
 add_subdirectory(Simulations)
 add_subdirectory(Tests)

@@ -1,8 +1,8 @@
+#include "ComputeWeights.h"
+
 #include <array>
 
 #include "tbb/tbb.h"
-
-#include "ComputeWeights.h"
 
 namespace FluidSim3D::SimTools
 {
@@ -113,10 +113,7 @@ VectorGrid<float> computeGhostFluidWeights(const LevelSet& surface)
 
 	for (int axis : {0, 1, 2})
 	{
-		Vec3i faceSize = ghostFluidWeights.size(axis);
-		int totalFaceSamples = faceSize[0] * faceSize[1] * faceSize[2];
-
-		tbb::parallel_for(tbb::blocked_range<int>(0, totalFaceSamples, tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+		tbb::parallel_for(tbb::blocked_range<int>(0, ghostFluidWeights.grid(axis).voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 		{
 			for (int faceIndex = range.begin(); faceIndex != range.end(); ++faceIndex)
 			{
@@ -226,13 +223,14 @@ void computeSupersampleVolumes(ScalarGrid<float>& volumes, const LevelSet& surfa
 				for (sample[1] = start[1]; sample[1] <= end[1]; sample[1] += dx)
 					for (sample[2] = start[2]; sample[2] <= end[2]; sample[2] += dx)
 					{
-						Vec3f worldSample = volumes.indexToWorld(sample);
+						Vec3f worldSamplePoint = volumes.indexToWorld(sample);
 
-						if (surface.interp(worldSample) <= 0.)
+						if (surface.interp(worldSamplePoint) <= 0.)
 							++insideMaterialCount;
 					}
-
-			volumes(sampleCoord) = insideMaterialCount * sampleVolume;
+			
+			if (insideMaterialCount > 0)
+				volumes(sampleCoord) = insideMaterialCount * sampleVolume;
 		}
 	});
 }

@@ -1,5 +1,5 @@
-#ifndef LIBRARY_EXTRAPOLATEFIELD_H
-#define LIBRARY_EXTRAPOLATEFIELD_H
+#ifndef LIBRARY_EXTRAPOLATE_FIELD_H
+#define LIBRARY_EXTRAPOLATE_FIELD_H
 
 #include "UniformGrid.h"
 #include "Utilities.h"

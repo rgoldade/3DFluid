@@ -2,6 +2,7 @@
 #define LIBRARY_UTILITIES_H
 
 #include <assert.h>
+#include <limits>
 #include <vector>
 
 #include "tbb/tbb.h"
@@ -124,9 +125,10 @@ T clamp(const T& value, const T& lower, const T& upper)
 	else if (value > upper) return upper;
 	else return value;
 }
+
 // Transforms even the sequence 0,1,2,3,... into reasonably good random numbers 
-	// Challenge: improve on this in speed and "randomness"!
-	// This seems to pass several statistical tests, and is a bijective map (of 32-bit unsigneds)
+// Challenge: improve on this in speed and "randomness"!
+// This seems to pass several statistical tests, and is a bijective map (of 32-bit unsigneds)
 inline unsigned randhash(unsigned seed)
 {
 	unsigned i = (seed ^ 0xA3C59AC3u) * 2654435769u;

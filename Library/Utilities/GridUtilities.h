@@ -59,6 +59,7 @@ inline Vec3i cellToNode(const Vec3i& cell, int nodeIndex)
 	assert(nodeIndex >= 0 && nodeIndex < 8);
 
 	Vec3i node(cell);
+
 	for (int axis : {0, 1, 2})
 	{
 		if (nodeIndex & (1 << axis))
@@ -71,6 +72,7 @@ inline Vec3i cellToNode(const Vec3i& cell, int nodeIndex)
 inline Vec3i faceToCell(const Vec3i& face, int axis, int direction)
 {
 	Vec3i cell(face);
+
 	if (direction == 0)
 		--cell[axis];
 	else

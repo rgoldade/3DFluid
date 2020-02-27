@@ -1,5 +1,5 @@
-#ifndef LIBRARY_SCALARGRID_H
-#define LIBRARY_SCALARGRID_H
+#ifndef LIBRARY_SCALAR_GRID_H
+#define LIBRARY_SCALAR_GRID_H
 
 #include "GridUtilities.h"
 #include "Renderer.h"
@@ -167,7 +167,7 @@ public:
 	{
 		using MinMaxPair = std::pair<T, T>;
 
-		MinMaxPair result = tbb::parallel_reduce(tbb::blocked_range<int>(0, this->myGrid.voxelCount(), tbbLightGrainSize),
+		MinMaxPair result = tbb::parallel_reduce(tbb::blocked_range<int>(0, this->voxelCount(), tbbLightGrainSize),
 												MinMaxPair(std::numeric_limits<T>::max(), std::numeric_limits<T>::lowest()),
 		[&](const tbb::blocked_range<int>& range, MinMaxPair valuePair) -> MinMaxPair
 		{
@@ -214,7 +214,7 @@ public:
 		return grad / (2. * offset);
 	}
 
-	double dx() const { return myXform.dx(); }
+	float dx() const { return myXform.dx(); }
 	Vec3f offset() const { return myXform.offset(); }
 	Transform xform() const { return myXform; }
 
@@ -269,7 +269,7 @@ T ScalarGrid<T>::interp(const Vec3f& samplePoint, bool isIndexSpace) const
 
 		for (int axis : {0, 1, 2})
 		{
-			if (indexPoint[axis] > 0 || indexPoint[axis] > float(this->mySize[axis] - 1))
+			if (indexPoint[axis] < 0 || indexPoint[axis] > float(this->mySize[axis] - 1))
 				return T(0);
 		}
 
@@ -531,8 +531,9 @@ void ScalarGrid<T>::drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, c
 template<typename T>
 void ScalarGrid<T>::drawSupersampledValues(Renderer& renderer, const Vec3f& start, const Vec3f& end, const Vec3f& sampleRadius, int samples, float sampleSize) const
 {
-	T maxSample = maxValue();
-	T minSample = minValue();
+	std::pair<T, T> minMaxPair = minAndMaxValue();
+	T minSample = minMaxPair.first;
+	T maxSample = minMaxPair.second;
 
 	Vec3i startIndex(ceil(start));
 	Vec3i endIndex(floor(end));
@@ -542,12 +543,12 @@ void ScalarGrid<T>::drawSupersampledValues(Renderer& renderer, const Vec3f& star
 		// Supersample
 		float dx = 2. * max(sampleRadius) / float(samples);
 		Vec3f indexPoint(cell);
-		Vec3f offset;
-		for (offset[0] = -sampleRadius[0]; offset[0] <= sampleRadius[0]; offset[0] += dx)
-			for (offset[1] = -sampleRadius[1]; offset[1] <= sampleRadius[1]; offset[1] += dx)
-				for (offset[2] = -sampleRadius[2]; offset[2] <= sampleRadius[2]; offset[2] += dx)
+		Vec3f sampleOffset;
+		for (sampleOffset[0] = -sampleRadius[0]; sampleOffset[0] <= sampleRadius[0]; sampleOffset[0] += dx)
+			for (sampleOffset[1] = -sampleRadius[1]; sampleOffset[1] <= sampleRadius[1]; sampleOffset[1] += dx)
+				for (sampleOffset[2] = -sampleRadius[2]; sampleOffset[2] <= sampleRadius[2]; sampleOffset[2] += dx)
 				{
-					Vec3f samplePoint = indexPoint + offset;
+					Vec3f samplePoint = indexPoint + sampleOffset;
 					Vec3f worldPoint = indexToWorld(samplePoint);
 
 					T value = (interp(worldPoint) - minSample) / (maxSample - minSample);

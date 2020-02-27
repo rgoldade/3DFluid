@@ -1,3 +1,4 @@
+#include <iostream>
 #include <memory>
 
 #include "Camera3D.h"
@@ -5,7 +6,6 @@
 #include "InitialGeometry.h"
 #include "LevelSet.h"
 #include "Renderer.h"
-#include "ScalarGrid.h"
 #include "TestVelocityFields.h"
 #include "Transform.h"
 #include "TriMesh.h"
@@ -81,7 +81,7 @@ void display()
 			movingSolidMesh.advectMesh(localDt, *solidVelocityField, IntegrationOrder::RK3);
 
 			// Need moving solid volume to build sampled velocity
-			LevelSet movingSolidSurface = LevelSet(xform, gridSize, 10);
+			LevelSet movingSolidSurface(xform, gridSize, 5);
 			movingSolidSurface.initFromMesh(movingSolidMesh, false);
 
 			VectorGrid<float> movingSolidVelocity(xform, gridSize, 0, VectorGridSettings::SampleType::STAGGERED);
@@ -190,7 +190,7 @@ int main(int argc, char **argv)
 
 	movingSolidMesh = makeSphereMesh(center + Vec3f(.75, -.25, 0), .25, dx);
 
-	LevelSet movingSolidSurface(xform, gridSize, 10);
+	LevelSet movingSolidSurface(xform, gridSize, 5);
 	movingSolidSurface.initFromMesh(movingSolidMesh, false);
 
 	LevelSet combinedSolidSurface(xform, gridSize, 5);

@@ -68,13 +68,11 @@ public:
 
 	T& operator[](int index)
 	{
-		assert(index < N);
 		return myVec[index];
 	}
 
 	const T& operator[](int index) const
 	{
-		assert(index < N);
 		return myVec[index];
 	}
 
@@ -392,7 +390,7 @@ Vec<3, T> cross(const Vec<3, T>& vec0, const Vec<3, T>& vec1)
 template<int N, typename T>
 Vec<N, T> round(const Vec<N, T>& vec)
 {
-	Vec<N, T> localVec(vec);
+	Vec<N, T> localVec;
 	for (int i = 0; i < N; ++i)
 		localVec[i] = std::round(vec[i]);
 
@@ -402,7 +400,7 @@ Vec<N, T> round(const Vec<N, T>& vec)
 template<int N, typename T>
 Vec<N, T> floor(const Vec<N, T>& vec)
 {
-	Vec<N, T> localVec(vec);
+	Vec<N, T> localVec;
 	for (int i = 0; i < N; ++i)
 		localVec[i] = std::floor(vec[i]);
 
@@ -412,7 +410,7 @@ Vec<N, T> floor(const Vec<N, T>& vec)
 template<int N, typename T>
 Vec<N, T> ceil(const Vec<N, T>& vec)
 {
-	Vec<N, T> localVec(vec);
+	Vec<N, T> localVec;
 	for (int i = 0; i < N; ++i)
 		localVec[i] = std::ceil(vec[i]);
 
@@ -422,7 +420,7 @@ Vec<N, T> ceil(const Vec<N, T>& vec)
 template<int N, typename T>
 Vec<N, T> fabs(const Vec<N, T>& vec)
 {
-	Vec<N, T> localVec(vec);
+	Vec<N, T> localVec;
 	for (int i = 0; i < N; ++i)
 		localVec[i] = std::fabs(vec[i]);
 
@@ -432,7 +430,7 @@ Vec<N, T> fabs(const Vec<N, T>& vec)
 template<int N, typename T>
 Vec<N, T> clamp(const Vec<N, T>& vec, const Vec<N, T>& low, const Vec<N, T>& high)
 {
-	Vec<N, T> localVec(vec);
+	Vec<N, T> localVec;
 	for (int i = 0; i < N; ++i)
 		localVec[i] = clamp(vec[i], low[i], high[i]);
 

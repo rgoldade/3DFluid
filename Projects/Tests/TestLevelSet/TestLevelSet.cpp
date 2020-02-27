@@ -1,3 +1,4 @@
+#include <iostream>
 #include <memory>
 
 #include "Camera3D.h"
