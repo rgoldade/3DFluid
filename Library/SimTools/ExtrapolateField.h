@@ -8,7 +8,7 @@
 ///////////////////////////////////
 //
 // ExtrapolateField.h/cpp
-// Ryan Goldade 2017 
+// Ryan Goldade 2017
 //
 // Extrapolates field from the boundary
 // of a mask outward based on a simple
@@ -24,195 +24,193 @@
 
 namespace FluidSim3D::SimTools
 {
-
 using namespace Utilities;
 
-template<typename Field>
+template <typename Field>
 void extrapolateField(Field& field, UniformGrid<VisitedCellLabels> finishedCellMask, int bandwidth)
 {
-	assert(bandwidth > 0);
-	assert(field.size() == finishedCellMask.size());
+    assert(bandwidth > 0);
+    assert(field.size() == finishedCellMask.size());
 
-	// Build an initial list of cells adjacent to finished cells in the provided mask grid
+    // Build an initial list of cells adjacent to finished cells in the provided mask grid
 
-	std::vector<Vec3i> toVisitCells;
+    std::vector<Vec3i> toVisitCells;
 
-	tbb::enumerable_thread_specific<std::vector<Vec3i>> parallelToVisitCells;
-		
-	tbb::parallel_for(tbb::blocked_range<int>(0, finishedCellMask.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
-	{
-		auto& localToVisitCells = parallelToVisitCells.local();
-		for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
-		{
-			Vec3i cell = finishedCellMask.unflatten(cellIndex);
+    tbb::enumerable_thread_specific<std::vector<Vec3i>> parallelToVisitCells;
 
-			// Load up adjacent unfinished cells
-			if (finishedCellMask(cell) == VisitedCellLabels::FINISHED_CELL)
-			{
-				for (int axis : {0, 1, 2})
-					for (int direction : {0, 1})
-					{
-						Vec3i adjacentCell = cellToCell(cell, axis, direction);
+    tbb::parallel_for(
+        tbb::blocked_range<int>(0, finishedCellMask.voxelCount(), tbbLightGrainSize),
+        [&](const tbb::blocked_range<int>& range) {
+            auto& localToVisitCells = parallelToVisitCells.local();
+            for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+            {
+                Vec3i cell = finishedCellMask.unflatten(cellIndex);
 
-						if (adjacentCell[axis] < 0 || adjacentCell[axis] >= finishedCellMask.size()[axis])
-							continue;
+                // Load up adjacent unfinished cells
+                if (finishedCellMask(cell) == VisitedCellLabels::FINISHED_CELL)
+                {
+                    for (int axis : {0, 1, 2})
+                        for (int direction : {0, 1})
+                        {
+                            Vec3i adjacentCell = cellToCell(cell, axis, direction);
 
-						if (finishedCellMask(adjacentCell) != VisitedCellLabels::FINISHED_CELL)
-							localToVisitCells.push_back(adjacentCell);
-					}
-			}
-		}
-	});
+                            if (adjacentCell[axis] < 0 || adjacentCell[axis] >= finishedCellMask.size()[axis]) continue;
 
-	mergeLocalThreadVectors(toVisitCells, parallelToVisitCells);
+                            if (finishedCellMask(adjacentCell) != VisitedCellLabels::FINISHED_CELL)
+                                localToVisitCells.push_back(adjacentCell);
+                        }
+                }
+            }
+        });
 
-	auto vecCompare = [](const Vec3i& vec0, const Vec3i& vec1)
-	{
-		for (int i = 0; i < 3; ++i)
-		{
-			if (vec0[i] < vec1[i])
-				return true;
-			else if (vec0[i] > vec1[i])
-				return false;
-		}
+    mergeLocalThreadVectors(toVisitCells, parallelToVisitCells);
 
-		return false;
-	};
+    auto vecCompare = [](const Vec3i& vec0, const Vec3i& vec1) {
+        for (int i = 0; i < 3; ++i)
+        {
+            if (vec0[i] < vec1[i])
+                return true;
+            else if (vec0[i] > vec1[i])
+                return false;
+        }
 
-	// Now flood outwards layer-by-layer
-	for (int layer = 0; layer < bandwidth; ++layer)
-	{
-		// First sort the list because there could be duplicates
-		tbb::parallel_sort(toVisitCells.begin(), toVisitCells.end(), vecCompare);
+        return false;
+    };
 
-		// Compute values from adjacent finished cells
-		tbb::parallel_for(tbb::blocked_range<int>(0, toVisitCells.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
-		{
-			// Because the list could contain duplicates, we need to advance forward through possible duplicates
-			int cellIndex = range.begin();
+    // Now flood outwards layer-by-layer
+    for (int layer = 0; layer < bandwidth; ++layer)
+    {
+        // First sort the list because there could be duplicates
+        tbb::parallel_sort(toVisitCells.begin(), toVisitCells.end(), vecCompare);
 
-			if (cellIndex > 0)
-			{
-				while (cellIndex < toVisitCells.size() && toVisitCells[cellIndex] == toVisitCells[cellIndex - 1])
-					++cellIndex;
-			}
+        // Compute values from adjacent finished cells
+        tbb::parallel_for(
+            tbb::blocked_range<int>(0, toVisitCells.size(), tbbLightGrainSize),
+            [&](const tbb::blocked_range<int>& range) {
+                // Because the list could contain duplicates, we need to advance forward through possible duplicates
+                int cellIndex = range.begin();
 
-			Vec3i oldCell(-1);
+                if (cellIndex > 0)
+                {
+                    while (cellIndex < toVisitCells.size() && toVisitCells[cellIndex] == toVisitCells[cellIndex - 1])
+                        ++cellIndex;
+                }
 
-			for (; cellIndex < range.end(); ++cellIndex)
-			{
-				Vec3i cell = toVisitCells[cellIndex];
+                Vec3i oldCell(-1);
 
-				if (cell == oldCell)
-					continue;
+                for (; cellIndex < range.end(); ++cellIndex)
+                {
+                    Vec3i cell = toVisitCells[cellIndex];
 
-				oldCell = cell;
+                    if (cell == oldCell) continue;
 
-				assert(finishedCellMask(cell) != VisitedCellLabels::FINISHED_CELL);
+                    oldCell = cell;
 
-				// TODO: get template type from field instead of assuming float is valid
-				float accumulatedValue = 0;
-				float accumulatedCount = 0;
+                    assert(finishedCellMask(cell) != VisitedCellLabels::FINISHED_CELL);
 
-				for (int axis : {0, 1, 2})
-					for (int direction : {0, 1})
-					{
-						Vec3i adjacentCell = cellToCell(cell, axis, direction);
+                    // TODO: get template type from field instead of assuming float is valid
+                    float accumulatedValue = 0;
+                    float accumulatedCount = 0;
 
-						if (adjacentCell[axis] < 0 || adjacentCell[axis] >= finishedCellMask.size()[axis])
-							continue;
+                    for (int axis : {0, 1, 2})
+                        for (int direction : {0, 1})
+                        {
+                            Vec3i adjacentCell = cellToCell(cell, axis, direction);
 
-						if (finishedCellMask(adjacentCell) == VisitedCellLabels::FINISHED_CELL)
-						{
-							accumulatedValue += field(adjacentCell);
-							++accumulatedCount;
-						}
-					}
+                            if (adjacentCell[axis] < 0 || adjacentCell[axis] >= finishedCellMask.size()[axis]) continue;
 
-				assert(accumulatedCount > 0);
-				
-				field(cell) = accumulatedValue / accumulatedCount;
-			}
-		});
+                            if (finishedCellMask(adjacentCell) == VisitedCellLabels::FINISHED_CELL)
+                            {
+                                accumulatedValue += field(adjacentCell);
+                                ++accumulatedCount;
+                            }
+                        }
 
-		// Set visited cells to finished
-		tbb::parallel_for(tbb::blocked_range<int>(0, toVisitCells.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
-		{
-			// Because the list could contain duplicates, we need to advance forward through possible duplicates
-			int cellIndex = range.begin();
+                    assert(accumulatedCount > 0);
 
-			if (cellIndex > 0)
-			{
-				while (cellIndex < toVisitCells.size() && toVisitCells[cellIndex] == toVisitCells[cellIndex - 1])
-					++cellIndex;
-			}
+                    field(cell) = accumulatedValue / accumulatedCount;
+                }
+            });
 
-			Vec3i oldCell(-1);
+        // Set visited cells to finished
+        tbb::parallel_for(
+            tbb::blocked_range<int>(0, toVisitCells.size(), tbbLightGrainSize),
+            [&](const tbb::blocked_range<int>& range) {
+                // Because the list could contain duplicates, we need to advance forward through possible duplicates
+                int cellIndex = range.begin();
 
-			for (; cellIndex < range.end(); ++cellIndex)
-			{
-				Vec3i cell = toVisitCells[cellIndex];
+                if (cellIndex > 0)
+                {
+                    while (cellIndex < toVisitCells.size() && toVisitCells[cellIndex] == toVisitCells[cellIndex - 1])
+                        ++cellIndex;
+                }
 
-				if (cell == oldCell)
-					continue;
+                Vec3i oldCell(-1);
 
-				oldCell = cell;
+                for (; cellIndex < range.end(); ++cellIndex)
+                {
+                    Vec3i cell = toVisitCells[cellIndex];
 
-				assert(finishedCellMask(cell) != VisitedCellLabels::FINISHED_CELL);
-				finishedCellMask(cell) = VisitedCellLabels::FINISHED_CELL;
-			}
-		});
+                    if (cell == oldCell) continue;
 
-		// Build new layer of cells
-		if (layer < bandwidth - 1)
-		{
-			parallelToVisitCells.clear();
+                    oldCell = cell;
 
-			tbb::parallel_for(tbb::blocked_range<int>(0, toVisitCells.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
-			{
-				auto& localToVisitCells = parallelToVisitCells.local();
+                    assert(finishedCellMask(cell) != VisitedCellLabels::FINISHED_CELL);
+                    finishedCellMask(cell) = VisitedCellLabels::FINISHED_CELL;
+                }
+            });
 
-				// Because the list could contain duplicates, we need to advance forward through possible duplicates
-				int cellIndex = range.begin();
+        // Build new layer of cells
+        if (layer < bandwidth - 1)
+        {
+            parallelToVisitCells.clear();
 
-				if (cellIndex > 0)
-				{
-					while (cellIndex < toVisitCells.size() && toVisitCells[cellIndex] == toVisitCells[cellIndex - 1])
-						++cellIndex;
-				}
+            tbb::parallel_for(
+                tbb::blocked_range<int>(0, toVisitCells.size(), tbbLightGrainSize),
+                [&](const tbb::blocked_range<int>& range) {
+                    auto& localToVisitCells = parallelToVisitCells.local();
 
-				Vec3i oldCell(-1);
+                    // Because the list could contain duplicates, we need to advance forward through possible duplicates
+                    int cellIndex = range.begin();
 
-				for (; cellIndex < range.end(); ++cellIndex)
-				{
-					Vec3i cell = toVisitCells[cellIndex];
+                    if (cellIndex > 0)
+                    {
+                        while (cellIndex < toVisitCells.size() &&
+                               toVisitCells[cellIndex] == toVisitCells[cellIndex - 1])
+                            ++cellIndex;
+                    }
 
-					if (cell == oldCell)
-						continue;
+                    Vec3i oldCell(-1);
 
-					oldCell = cell;
+                    for (; cellIndex < range.end(); ++cellIndex)
+                    {
+                        Vec3i cell = toVisitCells[cellIndex];
 
-					assert(finishedCellMask(cell) == VisitedCellLabels::FINISHED_CELL);
+                        if (cell == oldCell) continue;
 
-					for (int axis : {0, 1, 2})
-						for (int direction : {0, 1})
-						{
-							Vec3i adjacentCell = cellToCell(cell, axis, direction);
+                        oldCell = cell;
 
-							if (adjacentCell[axis] < 0 || adjacentCell[axis] >= finishedCellMask.size()[axis])
-								continue;
+                        assert(finishedCellMask(cell) == VisitedCellLabels::FINISHED_CELL);
 
-							if (finishedCellMask(adjacentCell) != VisitedCellLabels::FINISHED_CELL)
-								localToVisitCells.push_back(adjacentCell);
-						}
-				}
-			});
+                        for (int axis : {0, 1, 2})
+                            for (int direction : {0, 1})
+                            {
+                                Vec3i adjacentCell = cellToCell(cell, axis, direction);
 
-			toVisitCells.clear();
-			mergeLocalThreadVectors(toVisitCells, parallelToVisitCells);
-		}
-	}
+                                if (adjacentCell[axis] < 0 || adjacentCell[axis] >= finishedCellMask.size()[axis])
+                                    continue;
+
+                                if (finishedCellMask(adjacentCell) != VisitedCellLabels::FINISHED_CELL)
+                                    localToVisitCells.push_back(adjacentCell);
+                            }
+                    }
+                });
+
+            toVisitCells.clear();
+            mergeLocalThreadVectors(toVisitCells, parallelToVisitCells);
+        }
+    }
 }
 
-}
+}  // namespace FluidSim3D::SimTools
 #endif

@@ -20,63 +20,49 @@
 
 namespace FluidSim3D::SimTools
 {
-
 using namespace SurfaceTrackers;
 using namespace Utilities;
 
 class PressureProjection
 {
-	using SolveReal = double;
-	using Vector = Eigen::VectorXd;
+    using SolveReal = double;
+    using Vector = Eigen::VectorXd;
 
 public:
+    PressureProjection(const LevelSet& surface, const VectorGrid<float>& cutCellWeights,
+                       const VectorGrid<float>& ghostFluidWeights, const VectorGrid<float>& solidVelocity);
 
-	PressureProjection(const LevelSet& surface,
-						const VectorGrid<float>& cutCellWeights,
-						const VectorGrid<float>& ghostFluidWeights,
-						const VectorGrid<float>& solidVelocity);
+    void project(VectorGrid<float>& velocity);
 
-	void project(VectorGrid<float>& velocity);
+    void setInitialGuess(const ScalarGrid<float>& initialGuessPressure)
+    {
+        assert(mySurface.isGridMatched(initialGuessPressure));
+        myUseInitialGuessPressure = true;
+        myInitialGuessPressure = &initialGuessPressure;
+    }
 
-	void setInitialGuess(const ScalarGrid<float>& initialGuessPressure)
-	{
-		assert(mySurface.isGridMatched(initialGuessPressure));
-		myUseInitialGuessPressure = true;
-		myInitialGuessPressure = &initialGuessPressure;
-	}
+    void disableInitialGuess() { myUseInitialGuessPressure = false; }
 
-	void disableInitialGuess()
-	{
-		myUseInitialGuessPressure = false;
-	}
+    ScalarGrid<float> getPressureGrid() { return myPressure; }
 
-	ScalarGrid<float> getPressureGrid()
-	{
-		return myPressure;
-	}
-
-	const VectorGrid<VisitedCellLabels>& getValidFaces()
-	{
-		return myValidFaces;
-	}
+    const VectorGrid<VisitedCellLabels>& getValidFaces() { return myValidFaces; }
 
 private:
+    const VectorGrid<float>& mySolidVelocity;
+    const VectorGrid<float>& myGhostFluidWeights;
+    const VectorGrid<float>& myCutCellWeights;
 
-	const VectorGrid<float>& mySolidVelocity;
-	const VectorGrid<float>& myGhostFluidWeights;
-	const VectorGrid<float>& myCutCellWeights;
+    // Store flags for solved faces
+    VectorGrid<VisitedCellLabels> myValidFaces;
 
-	// Store flags for solved faces
-	VectorGrid<VisitedCellLabels> myValidFaces;
+    const LevelSet& mySurface;
 
-	const LevelSet& mySurface;
+    ScalarGrid<float> myPressure;
 
-	ScalarGrid<float> myPressure;
-
-	const ScalarGrid<float> *myInitialGuessPressure;
-	bool myUseInitialGuessPressure;
+    const ScalarGrid<float>* myInitialGuessPressure;
+    bool myUseInitialGuessPressure;
 };
 
-}
+}  // namespace FluidSim3D::SimTools
 
 #endif

@@ -19,7 +19,6 @@
 
 namespace FluidSim3D::SimTools
 {
-
 using namespace SurfaceTrackers;
 
 VectorGrid<float> computeGhostFluidWeights(const LevelSet& surface);
@@ -30,6 +29,6 @@ void computeSupersampleVolumes(ScalarGrid<float>& volumes, const LevelSet& surfa
 
 VectorGrid<float> computeSupersampledFaceVolumes(const LevelSet& surface, int samples);
 
-}
+}  // namespace FluidSim3D::SimTools
 
 #endif

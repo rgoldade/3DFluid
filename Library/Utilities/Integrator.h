@@ -9,42 +9,45 @@
 // Integrator.h
 // Ryan Goldade 2017
 //
-// Integration functions to assist 
+// Integration functions to assist
 // with Lagrangian advection.
 //
 ////////////////////////////////////
 
 namespace FluidSim3D::Utilities
 {
-
-enum class IntegrationOrder { FORWARDEULER, RK3 };
-
-template<typename T, typename Function>
-inline T Integrator(float h, const T& x,  const Function& f, IntegrationOrder order)
+enum class IntegrationOrder
 {
-	T value;
+    FORWARDEULER,
+    RK3
+};
 
-	switch (order)
-	{
-	case IntegrationOrder::FORWARDEULER:
-		value = x + h * f(0, x);
-		break;
-	case IntegrationOrder::RK3:
-	{
-		T k1 = h * f(0., x);
-		T k2 = h * f(h / 2., x + k1 / 2.);
-		T k3 = h * f(h, x - k1 + k2);
+template <typename T, typename Function>
+inline T Integrator(float h, const T& x, const Function& f, IntegrationOrder order)
+{
+    T value;
 
-		value = x + (1. / 6.) * (k1 + 4. * k2 + k3);
-		break;
-	}
-	default:
-		assert(false);
-	}
+    switch (order)
+    {
+        case IntegrationOrder::FORWARDEULER:
+            value = x + h * f(0, x);
+            break;
+        case IntegrationOrder::RK3:
+        {
+            T k1 = h * f(0., x);
+            T k2 = h * f(h / 2., x + k1 / 2.);
+            T k3 = h * f(h, x - k1 + k2);
 
-	return value;
+            value = x + (1. / 6.) * (k1 + 4. * k2 + k3);
+            break;
+        }
+        default:
+            assert(false);
+    }
+
+    return value;
 }
 
-}
+}  // namespace FluidSim3D::Utilities
 
 #endif

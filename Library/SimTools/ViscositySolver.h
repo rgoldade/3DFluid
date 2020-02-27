@@ -21,16 +21,11 @@
 
 namespace FluidSim3D::SimTools
 {
-
 using namespace SurfaceTrackers;
 using namespace Utilities;
 
-void ViscositySolver(float dt,
-						const LevelSet& surface,
-						VectorGrid<float>& velocity,
-						const LevelSet& solidSurface,
-						const VectorGrid<float>& solidVelocity,
-						const ScalarGrid<float>& viscosity);
-}
+void ViscositySolver(float dt, const LevelSet& surface, VectorGrid<float>& velocity, const LevelSet& solidSurface,
+                     const VectorGrid<float>& solidVelocity, const ScalarGrid<float>& viscosity);
+}  // namespace FluidSim3D::SimTools
 
 #endif

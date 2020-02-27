@@ -37,84 +37,86 @@ static constexpr float dt = 1. / 50.;
 
 void keyboard(unsigned char key, int x, int y)
 {
-	if (key == '+')
-		planePosition += planeDX;
-	else if (key == '-')
-		planePosition -= planeDX;
-	else if (key == 'x')
-		planeAxis = Axis::XAXIS;
-	else if (key == 'y')
-		planeAxis = Axis::YAXIS;
-	else if (key == 'z')
-		planeAxis = Axis::ZAXIS;
-	else if (key == ' ')
-		runSimulation = !runSimulation;
-	else if (key == 'n')
-		runSingleTimestep = true;
+    if (key == '+')
+        planePosition += planeDX;
+    else if (key == '-')
+        planePosition -= planeDX;
+    else if (key == 'x')
+        planeAxis = Axis::XAXIS;
+    else if (key == 'y')
+        planeAxis = Axis::YAXIS;
+    else if (key == 'z')
+        planeAxis = Axis::ZAXIS;
+    else if (key == ' ')
+        runSimulation = !runSimulation;
+    else if (key == 'n')
+        runSingleTimestep = true;
 
-	isDisplayDirty = true;
+    isDisplayDirty = true;
 }
 
 void display()
 {
-	if (runSimulation || runSingleTimestep)
-	{
-		std::cout << "\nStart of frame: " << frameCount << std::endl;
-		++frameCount;
+    if (runSimulation || runSingleTimestep)
+    {
+        std::cout << "\nStart of frame: " << frameCount << std::endl;
+        ++frameCount;
 
-		// Advect mesh through deformation field	
-		triMesh.advectMesh(dt, *simulator, IntegrationOrder::RK3);
+        // Advect mesh through deformation field
+        triMesh.advectMesh(dt, *simulator, IntegrationOrder::RK3);
 
-		simulator->advanceField(dt);
+        simulator->advanceField(dt);
 
-		implicitSurface->initFromMesh(triMesh, false);
-		triMesh = implicitSurface->buildMesh();
+        implicitSurface->initFromMesh(triMesh, false);
+        triMesh = implicitSurface->buildMesh();
 
-		isDisplayDirty = true;
-	}
+        isDisplayDirty = true;
+    }
 
-	if (isDisplayDirty)
-	{
-		renderer->clear();
+    if (isDisplayDirty)
+    {
+        renderer->clear();
 
-		triMesh.drawMesh(*renderer, true /* draw triangle faces */, Vec3f(.5),
-									false /* don't render triangle normals*/, Vec3f(1, 0, 0),
-									false /*don't render mesh vertices*/, Vec3f(0),
-									true /* draw triangle edges*/, Vec3f(0));
+        triMesh.drawMesh(*renderer, true /* draw triangle faces */, Vec3f(.5), false /* don't render triangle normals*/,
+                         Vec3f(1, 0, 0), false /*don't render mesh vertices*/, Vec3f(0), true /* draw triangle edges*/,
+                         Vec3f(0));
 
-		isDisplayDirty = false;
+        isDisplayDirty = false;
 
-		glutPostRedisplay();
-	}
-	runSingleTimestep = false;
+        glutPostRedisplay();
+    }
+    runSingleTimestep = false;
 }
 
 int main(int argc, char** argv)
 {
-	float dx = .005;
-	Vec3f topRightCorner(1);
-	Vec3f bottomLeftCorner(0);
-	Vec3i gridSize = Vec3i((topRightCorner - bottomLeftCorner) / dx);
-	Transform xform(dx, bottomLeftCorner);
+    float dx = .005;
+    Vec3f topRightCorner(1);
+    Vec3f bottomLeftCorner(0);
+    Vec3i gridSize = Vec3i((topRightCorner - bottomLeftCorner) / dx);
+    Transform xform(dx, bottomLeftCorner);
 
-	planeDX = std::min(float(1) / float(gridSize[0]), std::min(float(1) / float(gridSize[1]), float(1) / float(gridSize[2])));
+    planeDX =
+        std::min(float(1) / float(gridSize[0]), std::min(float(1) / float(gridSize[1]), float(1) / float(gridSize[2])));
 
-	renderer = std::make_unique<Renderer>("Level set test", Vec2i(1000), Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]), topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
-	camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
-	renderer->setCamera(camera.get());
+    renderer =
+        std::make_unique<Renderer>("Level set test", Vec2i(1000), Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]),
+                                   topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
+    camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
+    renderer->setCamera(camera.get());
 
-	simulator = std::make_unique<DeformationField>(0., 3.);
+    simulator = std::make_unique<DeformationField>(0., 3.);
 
-	triMesh = makeSphereMesh(Vec3f(.35), .15, dx);
+    triMesh = makeSphereMesh(Vec3f(.35), .15, dx);
 
-	// Scene settings
-	implicitSurface = std::make_unique<LevelSet>(xform, gridSize, 5);
-	implicitSurface->initFromMesh(triMesh, false);
+    // Scene settings
+    implicitSurface = std::make_unique<LevelSet>(xform, gridSize, 5);
+    implicitSurface->initFromMesh(triMesh, false);
 
-	std::function<void()> displayFunc = display;
-	renderer->setUserDisplay(displayFunc);
+    std::function<void()> displayFunc = display;
+    renderer->setUserDisplay(displayFunc);
 
-	std::function<void(unsigned char, int, int)> keyboardFunc = keyboard;
-	renderer->setUserKeyboard(keyboardFunc);
-	renderer->run();
+    std::function<void(unsigned char, int, int)> keyboardFunc = keyboard;
+    renderer->setUserKeyboard(keyboardFunc);
+    renderer->run();
 }
