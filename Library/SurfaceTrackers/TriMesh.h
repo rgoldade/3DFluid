@@ -83,6 +83,8 @@ private:
 class TriFace
 {
 public:
+    TriFace() : myVertices(-1) {}
+
     TriFace(const Vec3i& vertices) : myVertices(vertices) {}
 
     const Vec3i& vertices() const { return myVertices; }
@@ -202,29 +204,23 @@ public:
     // Reverse winding order
     void reverse()
     {
-        tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize),
-                          [&](const tbb::blocked_range<int>& range) {
-                              for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
-                                  myTriFaces[triFaceIndex].reverse();
-                          });
+        tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
+            for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex) myTriFaces[triFaceIndex].reverse();
+        });
     }
 
     void scale(float s)
     {
-        tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize),
-                          [&](const tbb::blocked_range<int>& range) {
-                              for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-                                  myVertices[vertexIndex] *= s;
-                          });
+        tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
+            for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex) myVertices[vertexIndex] *= s;
+        });
     }
 
     void translate(const Vec3f& t)
     {
-        tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize),
-                          [&](const tbb::blocked_range<int>& range) {
-                              for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-                                  myVertices[vertexIndex] += t;
-                          });
+        tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
+            for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex) myVertices[vertexIndex] += t;
+        });
     }
 
     // Test for a degenerate tri
@@ -232,14 +228,12 @@ public:
     {
         const TriFace& triFace = myTriFaces[triFaceIndex];
 
-        return (myVertices[triFace.vertex(0)].point() == myVertices[triFace.vertex(1)].point() ||
-                myVertices[triFace.vertex(1)].point() == myVertices[triFace.vertex(2)].point() ||
+        return (myVertices[triFace.vertex(0)].point() == myVertices[triFace.vertex(1)].point() || myVertices[triFace.vertex(1)].point() == myVertices[triFace.vertex(2)].point() ||
                 myVertices[triFace.vertex(0)].point() == myVertices[triFace.vertex(2)].point());
     }
 
-    void drawMesh(Renderer& renderer, bool doRenderTriFaces = false, Vec3f triFaceColour = Vec3f(0),
-                  bool doRenderTriNormals = false, Vec3f normalColour = Vec3f(0), bool doRenderVertices = false,
-                  Vec3f vertexColour = Vec3f(0), bool doRenderTriEdges = false, Vec3f edgeColour = Vec3f(0));
+    void drawMesh(Renderer& renderer, bool doRenderTriFaces = false, Vec3f triFaceColour = Vec3f(0), bool doRenderTriNormals = false, Vec3f normalColour = Vec3f(0),
+                  bool doRenderVertices = false, Vec3f vertexColour = Vec3f(0), bool doRenderTriEdges = false, Vec3f edgeColour = Vec3f(0));
 
     template <typename VelocityField>
     void advectMesh(float dt, const VelocityField& vel, IntegrationOrder order);
@@ -256,11 +250,10 @@ private:
 template <typename VelocityField>
 void TriMesh::advectMesh(float dt, const VelocityField& velocity, IntegrationOrder order)
 {
-    tbb::parallel_for(
-        tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-            for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-                myVertices[vertexIndex].setPoint(Integrator(dt, myVertices[vertexIndex].point(), velocity, order));
-        });
+    tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
+        for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
+            myVertices[vertexIndex].setPoint(Integrator(dt, myVertices[vertexIndex].point(), velocity, order));
+    });
 }
 
 }  // namespace FluidSim3D::SurfaceTrackers
