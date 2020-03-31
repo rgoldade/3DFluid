@@ -1,7 +1,11 @@
 #ifndef LIBRARY_CAMERA3D_H
 #define LIBRARY_CAMERA3D_H
 
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
 #include <GL/glut.h>
+#endif
 
 #include "Utilities.h"
 #include "Vec.h"
