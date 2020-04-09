@@ -140,7 +140,7 @@ public:
     Transform xform() const { return myXform; }
 
     Vec3i size(int axis) const { return myGrids[axis].size(); }
-    Vec2i gridSize() const { return myGridSize; }
+    Vec3i gridSize() const { return myGridSize; }
     SampleType sampleType() const { return mySampleType; }
 
     // Rendering methods
