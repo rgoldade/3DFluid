@@ -81,5 +81,16 @@ private:
     const Axis myRotationAxis;
 };
 
+class NotchedDiskField
+{
+public:
+
+    // Procedural velocity field
+    Vec3f operator()(float, const Vec3f& pos) const
+    {
+	return Vec3f((PI / 314.) * (50.0 - pos[1]), (PI / 314.) * (pos[0] - 50.0), 0);
+    }
+};
+
 }  // namespace FluidSim3D::SimTools
 #endif

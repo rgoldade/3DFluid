@@ -235,6 +235,8 @@ public:
     void drawMesh(Renderer& renderer, bool doRenderTriFaces = false, Vec3f triFaceColour = Vec3f(0), bool doRenderTriNormals = false, Vec3f normalColour = Vec3f(0),
                   bool doRenderVertices = false, Vec3f vertexColour = Vec3f(0), bool doRenderTriEdges = false, Vec3f edgeColour = Vec3f(0));
 
+    void printOBJ(const std::string &filename) const;
+
     template <typename VelocityField>
     void advectMesh(float dt, const VelocityField& vel, IntegrationOrder order);
 

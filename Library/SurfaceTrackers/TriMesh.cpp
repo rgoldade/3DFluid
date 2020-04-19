@@ -1,9 +1,11 @@
 #include "TriMesh.h"
 
+#include <fstream>
 #include <iostream>
 
 namespace FluidSim3D::SurfaceTrackers
 {
+
 void TriMesh::initialize(const std::vector<Vec3i>& triFaces, const std::vector<Vec3f>& vertices)
 {
     std::vector<std::pair<int, int>> vertexFacePairs(3 * triFaces.size());
@@ -196,6 +198,31 @@ void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3f triFaceC
 
         renderer.addLines(startPoints, endPoints, edgeColour);
     }
+}
+
+void TriMesh::printOBJ(const std::string &filename) const
+{
+    std::string localFileName = filename;
+    localFileName += std::string(".obj");
+
+    std::ofstream objFile;
+    objFile.open(localFileName);
+
+    // Print vertex positions
+
+    for (const auto& vertex : myVertices)
+    {
+	Vec3f point = vertex.point();
+	objFile << "v " << point[0] << " " << point[1] << " " << point[2] << "\n";
+    }
+
+    // Print triangle faces
+
+    for (const auto& triFace : myTriFaces)
+	objFile << "f " << triFace.vertex(0) + 1 << " " << triFace.vertex(1) + 1 << " " << triFace.vertex(2) + 1 << "\n";
+    
+    objFile << "\n";
+    objFile.close();
 }
 
 bool TriMesh::unitTestMesh() const
