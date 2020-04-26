@@ -88,8 +88,16 @@ std::vector<Vec3f> TriMesh::vertexNormals() const
 {
     std::vector<Vec3f> triFaceWeightedNormals(myTriFaces.size());
 
-    tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex) triFaceWeightedNormals[triFaceIndex] = scaledNormal(triFaceIndex);
+    tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+    {
+        for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
+        {
+            Vec3f triNormal = scaledNormal(triFaceIndex);
+            
+            assert(std::isfinite(triNormal[0]) && std::isfinite(triNormal[1]) && std::isfinite(triNormal[2]));
+            
+            triFaceWeightedNormals[triFaceIndex] = triNormal;
+        }
     });
 
     std::vector<Vec3f> vertexNormals(myVertices.size());
@@ -107,7 +115,11 @@ std::vector<Vec3f> TriMesh::vertexNormals() const
                 localVertexNormal += triFaceWeightedNormals[triFaceIndex];
             }
 
-            vertexNormals[vertexIndex] = normalize(localVertexNormal);
+            Vec3f vertexNormal = normalize(localVertexNormal);
+            
+            assert(std::isfinite(vertexNormal[0]) && std::isfinite(vertexNormal[1]) && std::isfinite(vertexNormal[2]));
+
+            vertexNormals[vertexIndex] = vertexNormal;
         }
     });
 
