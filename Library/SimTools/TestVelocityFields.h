@@ -78,6 +78,17 @@ private:
     const Axis myRotationAxis;
 };
 
+class NotchedDiskField
+{
+public:
+
+    // Procedural velocity field
+    Vec3d operator()(float, const Vec3d& pos) const
+    {
+	return Vec3d((PI / 314.) * (50.0 - pos[1]), (PI / 314.) * (pos[0] - 50.0), 0);
+    }
+};
+
 }
 
 #endif

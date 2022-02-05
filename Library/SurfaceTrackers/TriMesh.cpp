@@ -1,5 +1,6 @@
 #include "TriMesh.h"
 
+#include <fstream>
 #include <iostream>
 
 #include "tbb/blocked_range.h"
@@ -199,6 +200,28 @@ void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3d triFaceC
 
         renderer.addLines(startPoints, endPoints, edgeColour);
     }
+}
+
+void TriMesh::saveAsOBJ(const std::string &filename) const
+{
+    std::string localFileName = filename;
+    localFileName += std::string(".obj");
+
+    std::ofstream objFile;
+    objFile.open(localFileName);
+
+    for (const Vec3d& vertex : myVertices)
+    {
+	    objFile << "v " << vertex[0] << " " << vertex[1] << " " << vertex[2] << "\n";
+    }
+
+    for (const Vec3i& tri : myTriangles)
+    {
+        objFile << "f " << tri[0] + 1 << " " << tri[1] + 1 << " " << tri[2] + 1 << "\n";
+    }
+    
+    objFile << "\n";
+    objFile.close();
 }
 
 bool TriMesh::unitTestMesh() const

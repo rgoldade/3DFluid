@@ -1,7 +1,6 @@
 #ifndef EULERIAN_LIQUID_SIMULATOR_H
 #define EULERIAN_LIQUID_SIMULATOR_H
 
-#include "FieldAdvector.h"
 #include "Integrator.h"
 #include "LevelSet.h"
 #include "ScalarGrid.h"
