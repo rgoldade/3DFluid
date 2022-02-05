@@ -1,10 +1,9 @@
-#ifndef LIBRARY_GRID_UTILITIES_H
-#define LIBRARY_GRID_UTILITIES_H
+#ifndef FLUIDSIM3D_GRID_UTILITIES_H
+#define FLUIDSIM3D_GRID_UTILITIES_H
 
 #include "Utilities.h"
-#include "Vec.h"
 
-namespace FluidSim3D::Utilities
+namespace FluidSim3D
 {
 enum class Axis
 {
@@ -13,7 +12,7 @@ enum class Axis
     ZAXIS
 };
 
-inline Vec3i cellToCell(const Vec3i& cell, int axis, int direction)
+FORCE_INLINE Vec3i cellToCell(const Vec3i& cell, int axis, int direction)
 {
     Vec3i adjacentCell(cell);
 
@@ -28,7 +27,7 @@ inline Vec3i cellToCell(const Vec3i& cell, int axis, int direction)
     return adjacentCell;
 }
 
-inline Vec3i cellToFace(const Vec3i& cell, int axis, int direction)
+FORCE_INLINE Vec3i cellToFace(const Vec3i& cell, int axis, int direction)
 {
     Vec3i face(cell);
 
@@ -40,7 +39,7 @@ inline Vec3i cellToFace(const Vec3i& cell, int axis, int direction)
     return face;
 }
 
-inline Vec3i cellToEdge(const Vec3i& cell, int edgeAxis, int edgeIndex)
+FORCE_INLINE Vec3i cellToEdge(const Vec3i& cell, int edgeAxis, int edgeIndex)
 {
     assert(edgeAxis >= 0 && edgeAxis < 3);
     assert(edgeIndex >= 0 && edgeIndex < 4);
@@ -59,7 +58,7 @@ inline Vec3i cellToEdge(const Vec3i& cell, int edgeAxis, int edgeIndex)
     return edge;
 }
 
-inline Vec3i cellToNode(const Vec3i& cell, int nodeIndex)
+FORCE_INLINE Vec3i cellToNode(const Vec3i& cell, int nodeIndex)
 {
     assert(nodeIndex >= 0 && nodeIndex < 8);
 
@@ -73,7 +72,7 @@ inline Vec3i cellToNode(const Vec3i& cell, int nodeIndex)
     return node;
 }
 
-inline Vec3i faceToCell(const Vec3i& face, int axis, int direction)
+FORCE_INLINE Vec3i faceToCell(const Vec3i& face, int axis, int direction)
 {
     Vec3i cell(face);
 
@@ -85,7 +84,7 @@ inline Vec3i faceToCell(const Vec3i& face, int axis, int direction)
     return cell;
 }
 
-inline Vec3i faceToEdge(const Vec3i& face, int faceAxis, int edgeAxis, int direction)
+FORCE_INLINE Vec3i faceToEdge(const Vec3i& face, int faceAxis, int edgeAxis, int direction)
 {
     assert(faceAxis >= 0 && faceAxis < 3 && edgeAxis >= 0 && edgeAxis < 3);
     assert(faceAxis != edgeAxis);
@@ -102,7 +101,7 @@ inline Vec3i faceToEdge(const Vec3i& face, int faceAxis, int edgeAxis, int direc
     return edge;
 }
 
-inline Vec3i faceToNode(const Vec3i& face, int faceAxis, int nodeIndex)
+FORCE_INLINE Vec3i faceToNode(const Vec3i& face, int faceAxis, int nodeIndex)
 {
     assert(faceAxis >= 0 && faceAxis < 3);
     assert(nodeIndex >= 0 && nodeIndex < 4);
@@ -120,7 +119,7 @@ inline Vec3i faceToNode(const Vec3i& face, int faceAxis, int nodeIndex)
     return node;
 }
 
-inline Vec3i faceToNodeCCW(const Vec3i& face, int faceAxis, int nodeIndex)
+FORCE_INLINE Vec3i faceToNodeCCW(const Vec3i& face, int faceAxis, int nodeIndex)
 {
     const Vec3i faceToNodeOffsets[3][4] = {{Vec3i(0, 0, 0), Vec3i(0, 1, 0), Vec3i(0, 1, 1), Vec3i(0, 0, 1)},
                                            {Vec3i(0, 0, 0), Vec3i(0, 0, 1), Vec3i(1, 0, 1), Vec3i(1, 0, 0)},
@@ -135,7 +134,7 @@ inline Vec3i faceToNodeCCW(const Vec3i& face, int faceAxis, int nodeIndex)
     return node;
 }
 
-inline Vec3i edgeToFace(const Vec3i& edge, int edgeAxis, int faceAxis, int direction)
+FORCE_INLINE Vec3i edgeToFace(const Vec3i& edge, int edgeAxis, int faceAxis, int direction)
 {
     assert(faceAxis >= 0 && faceAxis < 3 && edgeAxis >= 0 && edgeAxis < 3);
     assert(faceAxis != edgeAxis);
@@ -152,7 +151,7 @@ inline Vec3i edgeToFace(const Vec3i& edge, int edgeAxis, int faceAxis, int direc
     return face;
 }
 
-inline Vec3i edgeToCell(const Vec3i& edge, int edgeAxis, int cellIndex)
+FORCE_INLINE Vec3i edgeToCell(const Vec3i& edge, int edgeAxis, int cellIndex)
 {
     assert(edgeAxis >= 0 && edgeAxis < 3);
     assert(cellIndex >= 0 && cellIndex < 4);
@@ -170,7 +169,7 @@ inline Vec3i edgeToCell(const Vec3i& edge, int edgeAxis, int cellIndex)
     return cell;
 }
 
-inline Vec3i edgeToCellCCW(const Vec3i& edge, int edgeAxis, int cellIndex)
+FORCE_INLINE Vec3i edgeToCellCCW(const Vec3i& edge, int edgeAxis, int cellIndex)
 {
     const Vec3i edgeToCellOffsets[3][4] = {{Vec3i(0, -1, -1), Vec3i(0, 0, -1), Vec3i(0, 0, 0), Vec3i(0, -1, 0)},
                                            {Vec3i(-1, 0, -1), Vec3i(-1, 0, 0), Vec3i(0, 0, 0), Vec3i(0, 0, -1)},
@@ -185,7 +184,7 @@ inline Vec3i edgeToCellCCW(const Vec3i& edge, int edgeAxis, int cellIndex)
     return cell;
 }
 
-inline Vec3i edgeToNode(const Vec3i& edge, int axis, int direction)
+FORCE_INLINE Vec3i edgeToNode(const Vec3i& edge, int axis, int direction)
 {
     Vec3i node(edge);
     if (direction == 1)
@@ -196,7 +195,7 @@ inline Vec3i edgeToNode(const Vec3i& edge, int axis, int direction)
     return node;
 }
 
-inline Vec3i nodeToFace(const Vec3i& node, int faceAxis, int faceIndex)
+FORCE_INLINE Vec3i nodeToFace(const Vec3i& node, int faceAxis, int faceIndex)
 {
     assert(faceAxis >= 0 && faceAxis < 3);
     assert(faceIndex >= 0 && faceIndex < 4);
@@ -214,7 +213,7 @@ inline Vec3i nodeToFace(const Vec3i& node, int faceAxis, int faceIndex)
     return face;
 }
 
-inline Vec3i nodeToCell(const Vec3i& node, int cellIndex)
+FORCE_INLINE Vec3i nodeToCell(const Vec3i& node, int cellIndex)
 {
     assert(cellIndex >= 0 && cellIndex < 8);
 
@@ -227,46 +226,48 @@ inline Vec3i nodeToCell(const Vec3i& node, int cellIndex)
     return cell;
 }
 
-const Vec3f colours[] = {Vec3f(1, 0, 0), Vec3f(0, 1, 0), Vec3f(0, 0, 1),
-                         Vec3f(1, 1, 0), Vec3f(1, 0, 1), Vec3f(0, 1, 1)};
+const Vec3d colours[] = {Vec3d(1, 0, 0), Vec3d(0, 1, 0), Vec3d(0, 0, 1),
+                         Vec3d(1, 1, 0), Vec3d(1, 0, 1), Vec3d(0, 1, 1)};
 
 template <typename Real>
 Real lengthFraction(Real phi0, Real phi1)
 {
     Real theta = 0.;
 
-    if (phi0 < 0)
+    if (phi0 <= 0)
     {
-        if (phi1 < 0)
+        if (phi1 <= 0)
             theta = 1;
-        else if (phi1 >= 0)
+        else// if (phi1 > 0)
             theta = phi0 / (phi0 - phi1);
     }
-    else if (phi1 < 0)
+    else if (phi1 <= 0)
         theta = phi1 / (phi1 - phi0);
 
     return theta;
 }
 
 // Execute function "f" over range [start, end)
-template <typename T, typename Function>
-void forEachVoxelRange(const Vec<3, T>& start, const Vec<3, T>& end, const Function& f)
+template <typename Function>
+void forEachVoxelRange(const Vec3i& start, const Vec3i& end, const Function& f)
 {
-    Vec<3, T> cell;
-    for (cell[0] = start[0]; cell[0] < end[0]; ++cell[0])
-        for (cell[1] = start[1]; cell[1] < end[1]; ++cell[1])
-            for (cell[2] = start[2]; cell[2] < end[2]; ++cell[2]) f(cell);
+    Vec3i cell;
+    for (cell[0] = start[0]; cell[0] != end[0]; ++cell[0])
+        for (cell[1] = start[1]; cell[1] != end[1]; ++cell[1])
+            for (cell[2] = start[2]; cell[2] != end[2]; ++cell[2])
+                f(cell);
 }
 
-template <typename T, typename Function>
-void forEachVoxelRangeReverse(const Vec<3, T>& start, const Vec<3, T>& end, const Function& f)
+template <typename Function>
+void forEachVoxelRangeReverse(const Vec3i& start, const Vec3i& end, const Function& f)
 {
-    Vec<3, T> cell;
+    Vec3i cell;
     for (cell[0] = end[0] - 1; cell[0] >= start[0]; --cell[0])
         for (cell[1] = end[1] - 1; cell[1] >= start[1]; --cell[1])
-            for (cell[2] = end[2] - 1; cell[2] >= start[2]; --cell[2]) f(cell);
+            for (cell[2] = end[2] - 1; cell[2] >= start[2]; --cell[2])
+                f(cell);
 }
 
-}  // namespace FluidSim3D::Utilities
+}
 
 #endif

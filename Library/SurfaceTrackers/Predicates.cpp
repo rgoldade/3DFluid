@@ -126,7 +126,7 @@
 
 #include "Predicates.h"
 
-namespace FluidSim3D::SurfaceTrackers
+namespace FluidSim3D
 {
 bool zCastIntersection(const Vec3R& a, const Vec3R& q, const Vec3R& r, const Vec3R& s)
 {

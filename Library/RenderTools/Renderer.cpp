@@ -1,6 +1,6 @@
 #include "Renderer.h"
 
-namespace FluidSim3D::RenderTools
+namespace FluidSim3D
 {
 // Helper struct because glut is a pain.
 // This is probably a very bad design choice
@@ -52,7 +52,7 @@ private:
 
 Renderer* GlutHelper::myRenderer;
 
-Renderer::Renderer(const char* title, const Vec2i& windowSize, const Vec2f& screenOrigin, float screenHeight, int* argc,
+Renderer::Renderer(const char* title, const Vec2i& windowSize, const Vec2d& screenOrigin, double screenHeight, int* argc,
                    char** argv)
     : myWindowSize(windowSize),
       myCurrentScreenOrigin(screenOrigin),
@@ -152,21 +152,21 @@ void Renderer::setUserDisplay(const std::function<void()>& displayFunction) { my
 
 // These helpers make it easy to render out basic primitives without having to write
 // a custom loop outside of this class
-void Renderer::addPoint(const Vec3f& point, const Vec3f& colour, float size)
+void Renderer::addPoint(const Vec3d& point, const Vec3d& colour, double size)
 {
     myPoints.emplace_back(1, point);
     myPointColours.push_back(colour);
     myPointSizes.push_back(size);
 }
 
-void Renderer::addPoints(const std::vector<Vec3f>& points, const Vec3f& colour, float size)
+void Renderer::addPoints(const VecVec3d& points, const Vec3d& colour, double size)
 {
     myPoints.push_back(points);
     myPointColours.push_back(colour);
     myPointSizes.push_back(size);
 }
 
-void Renderer::addLine(const Vec3f& startingPoint, const Vec3f& endingPoint, const Vec3f& colour, float lineWidth)
+void Renderer::addLine(const Vec3d& startingPoint, const Vec3d& endingPoint, const Vec3d& colour, double lineWidth)
 {
     myLineStartingPoints.emplace_back(1, startingPoint);
     myLineEndingPoints.emplace_back(1, endingPoint);
@@ -175,8 +175,8 @@ void Renderer::addLine(const Vec3f& startingPoint, const Vec3f& endingPoint, con
     myLineWidths.push_back(lineWidth);
 }
 
-void Renderer::addLines(const std::vector<Vec3f>& startingPoints, const std::vector<Vec3f>& endingPoints,
-                        const Vec3f& colour, float lineWidth)
+void Renderer::addLines(const VecVec3d& startingPoints, const VecVec3d& endingPoints,
+                        const Vec3d& colour, double lineWidth)
 {
     assert(startingPoints.size() == endingPoints.size());
     myLineStartingPoints.push_back(startingPoints);
@@ -186,8 +186,8 @@ void Renderer::addLines(const std::vector<Vec3f>& startingPoints, const std::vec
     myLineWidths.push_back(lineWidth);
 }
 
-void Renderer::addTriFaces(const std::vector<Vec3f>& vertices, const std::vector<Vec3f>& normals,
-                           const std::vector<Vec3i>& faces, const Vec3f& faceColour)
+void Renderer::addTriFaces(const VecVec3d& vertices, const VecVec3d& normals,
+                           const VecVec3i& faces, const Vec3d& faceColour)
 {
     assert(vertices.size() == normals.size());
 
@@ -207,15 +207,15 @@ void Renderer::drawPrimitives() const
 
     for (int pointListIndex = 0; pointListIndex < myPoints.size(); ++pointListIndex)
     {
-        const Vec3f& pointColour = myPointColours[pointListIndex];
+        Vec3t<GLfloat> pointColour = myPointColours[pointListIndex].cast<GLfloat>();
         glColor3f(pointColour[0], pointColour[1], pointColour[2]);
-        glPointSize(myPointSizes[pointListIndex]);
+        glPointSize(GLfloat(myPointSizes[pointListIndex]));
 
         glBegin(GL_POINTS);
 
         for (int pointIndex = 0; pointIndex < myPoints[pointListIndex].size(); ++pointIndex)
         {
-            const Vec3f& point = myPoints[pointListIndex][pointIndex];
+            Vec3t<GLfloat> point = myPoints[pointListIndex][pointIndex].cast<GLfloat>();
             glVertex3f(point[0], point[1], point[2]);
         }
 
@@ -227,10 +227,10 @@ void Renderer::drawPrimitives() const
 
     for (int lineListIndex = 0; lineListIndex < myLineStartingPoints.size(); ++lineListIndex)
     {
-        const Vec3f& lineColour = myLineColours[lineListIndex];
+        Vec3t<GLfloat> lineColour = myLineColours[lineListIndex].cast<GLfloat>();
         glColor3f(lineColour[0], lineColour[1], lineColour[2]);
 
-        glLineWidth(myLineWidths[lineListIndex]);
+        glLineWidth(GLfloat(myLineWidths[lineListIndex]));
 
         glBegin(GL_LINES);
 
@@ -238,10 +238,10 @@ void Renderer::drawPrimitives() const
 
         for (int lineIndex = 0; lineIndex < myLineStartingPoints[lineListIndex].size(); ++lineIndex)
         {
-            const Vec3f& startPoint = myLineStartingPoints[lineListIndex][lineIndex];
+            Vec3t<GLfloat> startPoint = myLineStartingPoints[lineListIndex][lineIndex].cast<GLfloat>();
             glVertex3f(startPoint[0], startPoint[1], startPoint[2]);
 
-            const Vec3f& endPoint = myLineEndingPoints[lineListIndex][lineIndex];
+            Vec3t<GLfloat> endPoint = myLineEndingPoints[lineListIndex][lineIndex].cast<GLfloat>();
             glVertex3f(endPoint[0], endPoint[1], endPoint[2]);
         }
 
@@ -274,18 +274,16 @@ void Renderer::drawPrimitives() const
     assert(myTriVertices.size() == myTriNormals.size() && myTriVertices.size() == myTriFaces.size() &&
            myTriVertices.size() == myTriFaceColours.size());
 
-    const int triListSize = myTriFaceColours.size();
-    for (int triListIndex = 0; triListIndex < triListSize; ++triListIndex)
+    for (int triListIndex = 0; triListIndex != myTriFaceColours.size(); ++triListIndex)
     {
-        const Vec3f& triFaceColour = myTriFaceColours[triListIndex];
+        Vec3t<GLfloat> triFaceColour = myTriFaceColours[triListIndex].cast<GLfloat>();
         glColor3f(triFaceColour[0], triFaceColour[1], triFaceColour[2]);
 
         glBegin(GL_TRIANGLES);
 
         assert(myTriVertices[triListIndex].size() == myTriNormals[triListIndex].size());
 
-        const int triSublistSize = myTriFaces[triListIndex].size();
-        for (int triIndex = 0; triIndex < triSublistSize; ++triIndex)
+        for (int triIndex = 0; triIndex != myTriFaces[triListIndex].size(); ++triIndex)
         {
             for (int pointIndex : {0, 1, 2})
             {
@@ -293,10 +291,10 @@ void Renderer::drawPrimitives() const
 
                 assert(trianglePointIndex >= 0 && trianglePointIndex < myTriVertices[triListIndex].size());
 
-                const Vec3f& vertexPoint = myTriVertices[triListIndex][trianglePointIndex];
+                Vec3t<GLfloat> vertexPoint = myTriVertices[triListIndex][trianglePointIndex].cast<GLfloat>();
                 glVertex3f(vertexPoint[0], vertexPoint[1], vertexPoint[2]);
 
-                const Vec3f& normal = myTriNormals[triListIndex][trianglePointIndex];
+                Vec3t<GLfloat> normal = myTriNormals[triListIndex][trianglePointIndex].cast<GLfloat>();
                 glNormal3f(normal[0], normal[1], normal[2]);
             }
         }
@@ -354,24 +352,24 @@ void Renderer::setGenericLights(void) const
     }
 }
 
-void Renderer::setGenericMaterial(float r, float g, float b, GLenum face) const
+void Renderer::setGenericMaterial(double r, double g, double b, GLenum face) const
 {
     GLfloat ambient[4], diffuse[4], specular[4];
 
-    ambient[0] = 0.1f * r + 0.03f;
-    ambient[1] = 0.1f * g + 0.03f;
-    ambient[2] = 0.1f * b + 0.03f;
-    ambient[3] = 1.0f;
+    ambient[0] = GLfloat(0.1 * r + 0.03);
+    ambient[1] = GLfloat(0.1 * g + 0.03);
+    ambient[2] = GLfloat(0.1 * b + 0.03);
+    ambient[3] = GLfloat(1.0);
 
-    diffuse[0] = 0.7f * r;
-    diffuse[1] = 0.7f * g;
-    diffuse[2] = 0.7f * b;
-    diffuse[3] = 1.0f;
+    diffuse[0] = GLfloat(0.7 * r);
+    diffuse[1] = GLfloat(0.7 * g);
+    diffuse[2] = GLfloat(0.7 * b);
+    diffuse[3] = GLfloat(1.0);
 
-    specular[0] = 0.1f * r + 0.1f;
-    specular[1] = 0.1f * g + 0.1f;
-    specular[2] = 0.1f * b + 0.1f;
-    specular[3] = 1.0f;
+    specular[0] = GLfloat(0.1 * r + 0.1);
+    specular[1] = GLfloat(0.1 * g + 0.1);
+    specular[2] = GLfloat(0.1 * b + 0.1);
+    specular[3] = GLfloat(1.0);
 
     glMaterialfv(face, GL_AMBIENT, ambient);
     glMaterialfv(face, GL_DIFFUSE, diffuse);

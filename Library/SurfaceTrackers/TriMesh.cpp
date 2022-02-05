@@ -2,174 +2,173 @@
 
 #include <iostream>
 
-namespace FluidSim3D::SurfaceTrackers
+#include "tbb/blocked_range.h"
+#include "tbb/parallel_for.h"
+
+namespace FluidSim3D
 {
-void TriMesh::initialize(const std::vector<Vec3i>& triFaces, const std::vector<Vec3f>& vertices)
+
+TriMesh::TriMesh(const VecVec3i& triangles, const VecVec3d& vertices)
 {
-    std::vector<std::pair<int, int>> vertexFacePairs(3 * triFaces.size());
+    initialize(triangles, vertices);
+}
 
-    myTriFaces.resize(triFaces.size());
-    tbb::parallel_for(tbb::blocked_range<int>(0, triFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
-        {
-            myTriFaces[triFaceIndex] = TriFace(triFaces[triFaceIndex]);
-
-            for (int localVertexIndex : {0, 1, 2})
-                vertexFacePairs[3 * triFaceIndex + localVertexIndex] = std::pair<int, int>(triFaces[triFaceIndex][localVertexIndex], triFaceIndex);
-        }
-    });
-
-    myVertices.resize(vertices.size());
-
-    tbb::parallel_for(tbb::blocked_range<int>(0, vertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex) myVertices[vertexIndex] = Vertex(vertices[vertexIndex]);
-    });
-
-    tbb::parallel_sort(vertexFacePairs.begin(), vertexFacePairs.end(),
-                        [&](const std::pair<int, int>& pair0, const std::pair<int, int>& pair1) { return pair0.first < pair1.first; });
-
-    tbb::parallel_for(tbb::blocked_range<int>(0, vertexFacePairs.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        // Advance to next new vertex
-        int vertexPairIndex = range.begin();
-        if (vertexPairIndex > 0)
-        {
-            while (vertexPairIndex < vertexFacePairs.size() && vertexFacePairs[vertexPairIndex].first == vertexFacePairs[vertexPairIndex - 1].first)
-                ++vertexPairIndex;
-        }
-
-        while (vertexPairIndex < range.end())
-        {
-            int vertexIndex = vertexFacePairs[vertexPairIndex].first;
-            while (vertexPairIndex < vertexFacePairs.size() && vertexIndex == vertexFacePairs[vertexPairIndex].first)
-            {
-                int triIndex = vertexFacePairs[vertexPairIndex].second;
-                myVertices[vertexIndex].addTriFace(triIndex);
-
-                ++vertexPairIndex;
-            }
-        }
-    });
+void TriMesh::reinitialize(const VecVec3i& triangles, const VecVec3d& vertices)
+{
+    initialize(triangles, vertices);
 }
 
 void TriMesh::insertMesh(const TriMesh& mesh)
 {
-    int triFaceCount = myTriFaces.size();
-    int vertexCount = myVertices.size();
+    size_t triCount = myTriangles.size();
+    size_t vertexCount = myVertices.size();
 
     myVertices.insert(myVertices.end(), mesh.myVertices.begin(), mesh.myVertices.end());
-    myTriFaces.insert(myTriFaces.end(), mesh.myTriFaces.begin(), mesh.myTriFaces.end());
+    myTriangles.insert(myTriangles.end(), mesh.myTriangles.begin(), mesh.myTriangles.end());
 
-    // Update vertices to new tris
-    tbb::parallel_for(tbb::blocked_range<int>(vertexCount, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-            for (int neighbourTriFaceIndex = 0; neighbourTriFaceIndex < myVertices[vertexIndex].valence(); ++neighbourTriFaceIndex)
-            {
-                int triFaceIndex = myVertices[vertexIndex].triFace(neighbourTriFaceIndex);
-                assert(triFaceIndex >= 0 && triFaceIndex < mesh.triFaceCount());
-
-                myVertices[vertexIndex].replaceTriFace(triFaceIndex, triFaceIndex + triFaceCount);
-            }
-    });
-
-    tbb::parallel_for(tbb::blocked_range<int>(triFaceCount, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
+    tbb::parallel_for(tbb::blocked_range<size_t>(triCount, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+    {
+        for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
             for (int localVertexIndex : {0, 1, 2})
             {
-                int meshVertexIndex = myTriFaces[triFaceIndex].vertex(localVertexIndex);
-                assert(meshVertexIndex >= 0 && meshVertexIndex < mesh.vertexCount());
-                myTriFaces[triFaceIndex].replaceVertex(meshVertexIndex, meshVertexIndex + vertexCount);
+                int vertexIndex = myTriangles[triIndex][localVertexIndex];
+                myTriangles[triIndex][localVertexIndex] = vertexIndex + int(vertexCount);
+
+                assert(vertexIndex >= 0 && vertexIndex < mesh.vertexCount());
+                assert(myTriangles[triIndex][localVertexIndex] < myVertices.size());
             }
+    });
+
+    buildAdjacentTriangles();
+}
+
+const VecVec3i& TriMesh::triangles() const
+{
+    return myTriangles;
+}
+
+const VecVec3d& TriMesh::vertices() const
+{
+    return myVertices;
+}
+
+const std::vector<std::vector<int>>& TriMesh::adjacentTriangles() const
+{
+    return myAdjacentTriangles;
+}
+
+void TriMesh::clear()
+{
+    myVertices.clear();
+    myTriangles.clear();
+}
+
+void TriMesh::reverse()
+{
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+    {
+        for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
+            std::swap(myTriangles[triIndex][0], myTriangles[triIndex][1]);
     });
 }
 
-std::vector<Vec3f> TriMesh::vertexNormals() const
+void TriMesh::scale(double s)
 {
-    std::vector<Vec3f> triFaceWeightedNormals(myTriFaces.size());
-
-    tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex) triFaceWeightedNormals[triFaceIndex] = scaledNormal(triFaceIndex);
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+    {
+        for (size_t vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
+            myVertices[vertexIndex] *= s;
     });
-
-    std::vector<Vec3f> vertexNormals(myVertices.size());
-
-    tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-        {
-            Vec3f localVertexNormal(0);
-
-            for (int neighbourTriFaceIndex = 0; neighbourTriFaceIndex < myVertices[vertexIndex].valence(); ++neighbourTriFaceIndex)
-            {
-                int triFaceIndex = myVertices[vertexIndex].triFace(neighbourTriFaceIndex);
-                assert(triFaceIndex >= 0 && triFaceIndex < myTriFaces.size());
-
-                localVertexNormal += triFaceWeightedNormals[triFaceIndex];
-            }
-
-            vertexNormals[vertexIndex] = normalize(localVertexNormal);
-        }
-    });
-
-    return vertexNormals;
 }
 
-void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3f triFaceColour, bool doRenderTriNormals, Vec3f normalColour, bool doRenderVertices, Vec3f vertexColour,
-                       bool doRenderTriEdges, Vec3f edgeColour)
+void TriMesh::translate(const Vec3d& t)
 {
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+    {
+        for (size_t vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
+            myVertices[vertexIndex] += t;
+    });
+}
+
+bool TriMesh::isTriangleDegenerate(int triIndex) const
+{
+    const Vec3i& tri = myTriangles[triIndex];
+
+    return (myVertices[tri[0]] == myVertices[tri[1]] ||
+            myVertices[tri[1]] == myVertices[tri[2]] ||
+            myVertices[tri[2]] == myVertices[tri[0]]);
+}
+
+AlignedBox3d TriMesh::boundingBox() const
+{
+    AlignedBox3d bbox;
+
+    for (const Vec3d& vertex : myVertices)
+    {
+        bbox.extend(vertex);
+    }
+
+    return bbox;
+}
+
+void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3d triFaceColour, bool doRenderTriNormals, Vec3d normalColour, bool doRenderVertices, Vec3d vertexColour,
+                       bool doRenderTriEdges, Vec3d edgeColour)
+{    
     // Pre-compute area-weighted triangle normals
     // and set triangle faces
-    std::vector<Vec3f> weightedTriNormals(myTriFaces.size(), Vec3f(0));
+    VecVec3d weightedTriNormals(myTriangles.size(), Vec3d::Zero());
 
     // Render triangles
-    std::vector<Vec3f> vertexPoints(myVertices.size());
-    std::vector<Vec3f> vertexNormals(myVertices.size(), Vec3f(0));
-    std::vector<Vec3i> triFaces(myTriFaces.size());
+    VecVec3d vertexNormals(myVertices.size(), Vec3d::Zero());
 
-    tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+    {
+        for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
         {
-            weightedTriNormals[triFaceIndex] = scaledNormal(triFaceIndex);
-
-            triFaces[triFaceIndex] = myTriFaces[triFaceIndex].vertices();
+            weightedTriNormals[triIndex] = scaledNormal(int(triIndex));
         }
     });
 
     // Accumulate area-weight triangle normals to each vertex and normalize.
     // Set vertex points.
-    tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+    {
+        for (size_t vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
         {
-            for (int neighbourTriFaceIndex = 0; neighbourTriFaceIndex < myVertices[vertexIndex].valence(); ++neighbourTriFaceIndex)
+            for (int triIndex : myAdjacentTriangles[vertexIndex])
             {
-                int triFaceIndex = myVertices[vertexIndex].triFace(neighbourTriFaceIndex);
-                vertexNormals[vertexIndex] += weightedTriNormals[triFaceIndex];
+                vertexNormals[vertexIndex] += weightedTriNormals[triIndex];
             }
 
-            normalizeInPlace(vertexNormals[vertexIndex]);
-
-            vertexPoints[vertexIndex] = myVertices[vertexIndex].point();
+            vertexNormals[vertexIndex].normalize();
         }
     });
 
-    if (doRenderTriFaces) renderer.addTriFaces(vertexPoints, vertexNormals, triFaces, triFaceColour);
+    if (doRenderTriFaces) renderer.addTriFaces(myVertices, vertexNormals, myTriangles, triFaceColour);
 
     // Render triangle normals
     if (doRenderTriNormals)
     {
-        std::vector<Vec3f> startPoints(myTriFaces.size());
-        std::vector<Vec3f> endPoints(myTriFaces.size());
+        VecVec3d startPoints(myTriangles.size());
+        VecVec3d endPoints(myTriangles.size());
 
-        tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-            for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+        {
+            for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
             {
-                Vec3f localNormalStart(0);
-                for (int localVertexIndex : {0, 1, 2}) localNormalStart += myVertices[myTriFaces[triFaceIndex].vertex(localVertexIndex)].point();
+                const Vec3i& tri = myTriangles[triIndex];
+
+                Vec3d localNormalStart = Vec3d::Zero();
+
+                for (int localVertexIndex : {0, 1, 2})
+                    localNormalStart += myVertices[tri[localVertexIndex]];
 
                 localNormalStart *= 1. / 3.;
 
-                startPoints[triFaceIndex] = localNormalStart;
+                startPoints[triIndex] = localNormalStart;
 
                 // Get triangle normal end point
-                endPoints[triFaceIndex] = startPoints[triFaceIndex] + .1 * normalize(weightedTriNormals[triFaceIndex]);
+                endPoints[triIndex] = startPoints[triIndex] + .1 * weightedTriNormals[triIndex].normalized();
             }
         });
 
@@ -177,21 +176,25 @@ void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3f triFaceC
     }
 
     // Render vertices
-    if (doRenderVertices) renderer.addPoints(vertexPoints, vertexColour, 2.);
+    if (doRenderVertices) renderer.addPoints(myVertices, vertexColour, 2.);
 
     if (doRenderTriEdges)
     {
-        std::vector<Vec3f> startPoints(3 * myTriFaces.size());
-        std::vector<Vec3f> endPoints(3 * myTriFaces.size());
+        VecVec3d startPoints(3 * myTriangles.size());
+        VecVec3d endPoints(3 * myTriangles.size());
 
-        tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-            for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
+        {
+            for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
+            {
+                const Vec3i& tri = myTriangles[triIndex];
                 for (int localStartVertexIndex : {0, 1, 2})
                 {
                     int localEndVertexIndex = (localStartVertexIndex + 1) % 3;
-                    startPoints[3 * triFaceIndex + localStartVertexIndex] = myVertices[myTriFaces[triFaceIndex].vertex(localStartVertexIndex)].point();
-                    endPoints[3 * triFaceIndex + localStartVertexIndex] = myVertices[myTriFaces[triFaceIndex].vertex(localEndVertexIndex)].point();
+                    startPoints[3 * triIndex + localStartVertexIndex] = myVertices[tri[localStartVertexIndex]];
+                    endPoints[3 * triIndex + localStartVertexIndex] = myVertices[tri[localEndVertexIndex]];
                 }
+            }
         });
 
         renderer.addLines(startPoints, endPoints, edgeColour);
@@ -200,84 +203,83 @@ void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3f triFaceC
 
 bool TriMesh::unitTestMesh() const
 {
-    tbb::enumerable_thread_specific<std::vector<Vec2i>> parallelFailedMeshPairs;
-
-    tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        auto& localFailedMeshPairs = parallelFailedMeshPairs.local();
-
-        for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-            for (int adjacentTriFaceIndex = 0; adjacentTriFaceIndex < myVertices[vertexIndex].valence(); ++adjacentTriFaceIndex)
-            {
-                int triFaceIndex = myVertices[vertexIndex].triFace(adjacentTriFaceIndex);
-
-                if (!myTriFaces[triFaceIndex].findVertex(vertexIndex)) localFailedMeshPairs.emplace_back(vertexIndex, triFaceIndex);
-            }
-    });
-
-    std::vector<Vec2i> failedMeshPairs;
-    mergeLocalThreadVectors(failedMeshPairs, parallelFailedMeshPairs);
-
-    if (failedMeshPairs.size() > 0)
+    // Verify vertex has two or more adjacent triangles
+    for (int vertexIndex = 0; vertexIndex != myVertices.size(); ++vertexIndex)
     {
-        for (const auto& failedPair : failedMeshPairs)
-            std::cout << "Unit test failed in adjacent tri-face test. Vertex: " << failedPair[0] << ". Tri: " << failedPair[1] << std::endl;
-
-        return false;
-    }
-
-    parallelFailedMeshPairs.clear();
-    failedMeshPairs.clear();
-
-    tbb::parallel_for(tbb::blocked_range<int>(0, myTriFaces.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        auto& localFailedMeshPairs = parallelFailedMeshPairs.local();
-
-        for (int triFaceIndex = range.begin(); triFaceIndex != range.end(); ++triFaceIndex)
-            for (int localVertexIndex : {0, 1, 2})
-            {
-                int meshVertexIndex = myTriFaces[triFaceIndex].vertex(localVertexIndex);
-
-                if (!myVertices[meshVertexIndex].findTriFace(triFaceIndex)) localFailedMeshPairs.emplace_back(meshVertexIndex, triFaceIndex);
-            }
-    });
-
-    mergeLocalThreadVectors(failedMeshPairs, parallelFailedMeshPairs);
-
-    if (failedMeshPairs.size() > 0)
-    {
-        for (const auto& failedPair : failedMeshPairs)
-            std::cout << "Unit test failed in adjacent vertex test. Vertex: " << failedPair[0] << ". Tri: " << failedPair[1] << std::endl;
-
-        return false;
-    }
-
-    tbb::enumerable_thread_specific<std::vector<int>> parallelNanVertices;
-
-    tbb::parallel_for(tbb::blocked_range<int>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range) {
-        auto& localNanVertices = parallelNanVertices.local();
-
-        for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
+        if (myAdjacentTriangles[vertexIndex].size() < 2)
         {
-            bool isVertexNan = false;
-            for (int axis : {0, 1, 2})
-            {
-                if (!std::isfinite(myVertices[vertexIndex].point()[axis])) isVertexNan = true;
-            }
-
-            if (isVertexNan) localNanVertices.push_back(vertexIndex);
+			return false;
         }
-    });
+    }
 
-    std::vector<int> nanVertices;
-    mergeLocalThreadVectors(nanVertices, parallelNanVertices);
-
-    if (nanVertices.size() > 0)
+    // Verify triangle has three valid vertices
+    for (const Vec3i& tri : myTriangles)
     {
-        for (const auto& nanVertex : nanVertices) std::cout << "Unit test failed in NaN check. Vertex: " << nanVertex << std::endl;
+        for (int localVertexIndex : {0, 1, 2})
+        {
+            if (tri[localVertexIndex] < 0 || tri[localVertexIndex] >= myVertices.size())
+            {
+				return false;
+            }
+        }
+    }
 
-        return false;
+    // Verify vertex's adjacent edge reciprocates
+    for (int vertexIndex = 0; vertexIndex != myVertices.size(); ++vertexIndex)
+    {
+        for (int triIndex : myAdjacentTriangles[vertexIndex])
+        {
+            const Vec3i& tri = myTriangles[triIndex];
+            if (tri[0] != vertexIndex && tri[1] != vertexIndex && tri[2] != vertexIndex)
+            {
+                return false;
+            }
+        }
+    }
+
+    // Verify triangle's vertices reciprocates
+    for (int triIndex = 0; triIndex != myTriangles.size(); ++triIndex)
+    {
+        for (int localVertexIndex : {0, 1, 2})
+        {
+            int vertexIndex = myTriangles[triIndex][localVertexIndex];
+            if (std::find(myAdjacentTriangles[vertexIndex].begin(), myAdjacentTriangles[vertexIndex].end(), triIndex) == myAdjacentTriangles[vertexIndex].end())
+            {
+                return false;
+            }
+        }
     }
 
     return true;
 }
 
-}  // namespace FluidSim3D::SurfaceTrackers
+//
+// Private methods
+//
+
+void TriMesh::initialize(const VecVec3i& triangles, const VecVec3d& vertices)
+{
+    myTriangles.clear();
+    myVertices.clear();
+
+    myTriangles.insert(myTriangles.end(), triangles.begin(), triangles.end());
+	myVertices.insert(myVertices.end(), vertices.begin(), vertices.end());
+
+    buildAdjacentTriangles();
+}
+
+void TriMesh::buildAdjacentTriangles()
+{
+    myAdjacentTriangles.clear();
+    myAdjacentTriangles.resize(myVertices.size());
+
+    for (size_t triIndex = 0; triIndex != myTriangles.size(); ++triIndex)
+    {
+        const Vec3i& tri = myTriangles[triIndex];
+
+        for (int localVertIndex : {0, 1, 2})
+            myAdjacentTriangles[tri[localVertIndex]].push_back(int(triIndex));
+    }
+}
+
+}

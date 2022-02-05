@@ -10,13 +10,9 @@
 #include "Transform.h"
 #include "TriMesh.h"
 #include "Utilities.h"
-#include "Vec.h"
 #include "VectorGrid.h"
 
-using namespace FluidSim3D::RenderTools;
-using namespace FluidSim3D::SurfaceTrackers;
-using namespace FluidSim3D::SimTools;
-using namespace FluidSim3D::Utilities;
+using namespace FluidSim3D;
 
 static std::unique_ptr<Renderer> renderer;
 static std::unique_ptr<Camera3D> camera;
@@ -29,8 +25,8 @@ static bool isDisplayDirty = true;
 static bool drawSolidBoundaries = true;
 static bool drawLiquidVelocities = true;
 
-static float planePosition = .5;
-static float planeDX = .05;
+static double planePosition = .5;
+static double planeDX = .05;
 static Axis planeAxis = Axis::ZAXIS;
 
 static std::unique_ptr<EulerianLiquidSimulator> simulator;
@@ -44,7 +40,7 @@ static LevelSet seedLiquidSurface;
 static Transform xform;
 static Vec3i gridSize;
 
-static constexpr float dt = 1. / 30.;
+static constexpr double dt = 1. / 30.;
 
 void display()
 {
@@ -53,17 +49,17 @@ void display()
         std::cout << "\nStart of frame: " << frameCount << std::endl;
         ++frameCount;
 
-        float frameTime = 0.;
+        double frameTime = 0.;
         while (frameTime < dt)
         {
             // Set CFL condition
-            float speed = simulator->maxVelocityMagnitude();
-            float localDt = dt - frameTime;
+            double speed = simulator->maxVelocityMagnitude();
+            double localDt = dt - frameTime;
             assert(localDt >= 0);
 
             if (speed > 1E-6)
             {
-                float cflDt = 3. * xform.dx() / speed;
+                double cflDt = 3. * xform.dx() / speed;
                 if (localDt > cflDt)
                 {
                     localDt = cflDt;
@@ -74,7 +70,7 @@ void display()
             if (localDt <= 0) break;
 
             // Add gravity
-            simulator->addForce(localDt, Vec3f(0, -9.8, 0));
+            simulator->addForce(localDt, Vec3d(0, -9.8, 0));
 
             // Update moving solid
             movingSolidMesh.advectMesh(localDt, *solidVelocityField, IntegrationOrder::RK3);
@@ -83,7 +79,7 @@ void display()
             LevelSet movingSolidSurface(xform, gridSize, 5);
             movingSolidSurface.initFromMesh(movingSolidMesh, false);
 
-            VectorGrid<float> movingSolidVelocity(xform, gridSize, 0, VectorGridSettings::SampleType::STAGGERED);
+            VectorGrid<double> movingSolidVelocity(xform, gridSize, Vec3d::Zero(), VectorGridSettings::SampleType::STAGGERED);
 
             // Set moving solid velocity
             for (int axis : {0, 1, 2})
@@ -95,9 +91,9 @@ void display()
                         {
                             Vec3i face = movingSolidVelocity.grid(axis).unflatten(faceIndex);
 
-                            Vec3f worldPosition = movingSolidVelocity.indexToWorld(Vec3f(face), axis);
+                            Vec3d worldPosition = movingSolidVelocity.indexToWorld(face.cast<double>(), axis);
 
-                            if (movingSolidSurface.interp(worldPosition) < xform.dx())
+                            if (movingSolidSurface.triLerp(worldPosition) < xform.dx())
                                 movingSolidVelocity(face, axis) = (*solidVelocityField)(0, worldPosition)[axis];
                         }
                     });
@@ -164,29 +160,29 @@ void keyboard(unsigned char key, int x, int y)
 
 int main(int argc, char** argv)
 {
-    float dx = .025;
-    Vec3f topRightCorner(1.75, 1.75, .75);
-    Vec3f bottomLeftCorner(-1.75, -1.75, -.75);
-    gridSize = Vec3i((topRightCorner - bottomLeftCorner) / dx);
+    double dx = .025;
+    Vec3d topRightCorner(.75, 1., .5);
+    Vec3d bottomLeftCorner(-.75, -1., -.5);
+    gridSize = ((topRightCorner - bottomLeftCorner) / dx).cast<int>();
     xform = Transform(dx, bottomLeftCorner);
-    Vec3f center = .5 * (topRightCorner + bottomLeftCorner);
+    Vec3d center = .5 * (topRightCorner + bottomLeftCorner);
 
-    renderer = std::make_unique<Renderer>("Viscous liquid simulator", Vec2i(1000),
-                                          Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]),
+    renderer = std::make_unique<Renderer>("Viscous liquid simulator", Vec2i::Constant(1000), Vec2d(bottomLeftCorner[0], bottomLeftCorner[1]),
                                           topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
+
     camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
     renderer->setCamera(camera.get());
 
     // Build static boundary geometry
-    float solidThickness = 10;
-    Vec3f solidScale = .5 * (topRightCorner - bottomLeftCorner) - Vec3f(solidThickness * dx);
+    double solidThickness = 10;
+    Vec3d solidScale = .5 * (topRightCorner - bottomLeftCorner) - Vec3d::Constant(solidThickness * dx);
     staticSolidMesh = makeCubeMesh(center, solidScale);
     staticSolidMesh.reverse();
     assert(staticSolidMesh.unitTestMesh());
 
     // Build moving boundary geometry
 
-    movingSolidMesh = makeSphereMesh(center + Vec3f(.75, -.25, 0), .25, dx);
+    movingSolidMesh = makeSphereMesh(center + Vec3d(.4, -.25, 0), .1, 3);
 
     LevelSet movingSolidSurface(xform, gridSize, 5);
     movingSolidSurface.initFromMesh(movingSolidMesh, false);
@@ -198,7 +194,7 @@ int main(int argc, char** argv)
 
     // Build seeding liquid geometry
 
-    TriMesh seedLiquidMesh = makeCubeMesh(center + Vec3f(0, .5, 0), Vec3f(.1, .25, .1));
+    TriMesh seedLiquidMesh = makeCubeMesh(center + Vec3d(0, .4, 0), Vec3d(.075, .3, .075));
     assert(seedLiquidMesh.unitTestMesh());
 
     seedLiquidSurface = LevelSet(xform, gridSize, 5);
@@ -209,6 +205,8 @@ int main(int argc, char** argv)
     simulator->setLiquidSurface(seedLiquidSurface);
 
     simulator->setSolidSurface(combinedSolidSurface);
+
+    simulator->setLiquidSurface(seedLiquidSurface);
 
     simulator->setViscosity(1.);
 

@@ -1,9 +1,8 @@
-#ifndef LIBRARY_INITIAL_GEOMETRY_H
-#define LIBRARY_INITIAL_GEOMETRY_H
+#ifndef FLUIDSIM3D_INITIAL_GEOMETRY_H
+#define FLUIDSIM3D_INITIAL_GEOMETRY_H
 
 #include "TriMesh.h"
 #include "Utilities.h"
-#include "Vec.h"
 
 ///////////////////////////////////
 //
@@ -15,14 +14,14 @@
 //
 ////////////////////////////////////
 
-namespace FluidSim3D::SurfaceTrackers
+namespace FluidSim3D
 {
-using namespace Utilities;
 
-TriMesh makeDiamondMesh(const Vec3f& center = Vec3f(0.), float scale = 1.);
-TriMesh makeCubeMesh(const Vec3f& center = Vec3f(0), const Vec3f& scale = Vec3f(1.));
-TriMesh makeSphereMesh(const Vec3f& center = Vec3f(0), float radius = 1., float dx = .1);
+TriMesh makeDiamondMesh(const Vec3d& center = Vec3d::Zero(), double scale = 1.);
+TriMesh makeCubeMesh(const Vec3d& center = Vec3d::Zero(), const Vec3d& scale = Vec3d::Ones());
+TriMesh makeIcosahedronMesh();
+TriMesh makeSphereMesh(const Vec3d& center = Vec3d::Zero(), double radius = 1., int subdivisions = 5);
 
-}  // namespace FluidSim3D::SurfaceTrackers
+}
 
 #endif

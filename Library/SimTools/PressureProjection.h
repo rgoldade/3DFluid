@@ -1,5 +1,5 @@
-#ifndef LIBRARY_PRESSURE_PROJECTION_H
-#define LIBRARY_PRESSURE_PROJECTION_H
+#ifndef FLUIDSIM3D_PRESSURE_PROJECTION_H
+#define FLUIDSIM3D_PRESSURE_PROJECTION_H
 
 #include <Eigen/Sparse>
 
@@ -18,10 +18,8 @@
 //
 ////////////////////////////////////
 
-namespace FluidSim3D::SimTools
+namespace FluidSim3D
 {
-using namespace SurfaceTrackers;
-using namespace Utilities;
 
 class PressureProjection
 {
@@ -29,12 +27,14 @@ class PressureProjection
     using Vector = Eigen::VectorXd;
 
 public:
-    PressureProjection(const LevelSet& surface, const VectorGrid<float>& cutCellWeights,
-                       const VectorGrid<float>& ghostFluidWeights, const VectorGrid<float>& solidVelocity);
+    PressureProjection(const LevelSet& surface,
+                        const VectorGrid<double>& cutCellWeights,
+                        const VectorGrid<double>& ghostFluidWeights,
+                        const VectorGrid<double>& solidVelocity);
 
-    void project(VectorGrid<float>& velocity);
+    void project(VectorGrid<double>& velocity);
 
-    void setInitialGuess(const ScalarGrid<float>& initialGuessPressure)
+    void setInitialGuess(const ScalarGrid<double>& initialGuessPressure)
     {
         assert(mySurface.isGridMatched(initialGuessPressure));
         myUseInitialGuessPressure = true;
@@ -43,26 +43,26 @@ public:
 
     void disableInitialGuess() { myUseInitialGuessPressure = false; }
 
-    ScalarGrid<float> getPressureGrid() { return myPressure; }
+    ScalarGrid<double> getPressureGrid() { return myPressure; }
 
     const VectorGrid<VisitedCellLabels>& getValidFaces() { return myValidFaces; }
 
 private:
-    const VectorGrid<float>& mySolidVelocity;
-    const VectorGrid<float>& myGhostFluidWeights;
-    const VectorGrid<float>& myCutCellWeights;
+    const VectorGrid<double>& mySolidVelocity;
+    const VectorGrid<double>& myGhostFluidWeights;
+    const VectorGrid<double>& myCutCellWeights;
 
     // Store flags for solved faces
     VectorGrid<VisitedCellLabels> myValidFaces;
 
     const LevelSet& mySurface;
 
-    ScalarGrid<float> myPressure;
+    ScalarGrid<double> myPressure;
 
-    const ScalarGrid<float>* myInitialGuessPressure;
+    const ScalarGrid<double>* myInitialGuessPressure;
     bool myUseInitialGuessPressure;
 };
 
-}  // namespace FluidSim3D::SimTools
+}
 
 #endif

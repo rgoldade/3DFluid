@@ -1,15 +1,13 @@
-#ifndef LIBRARY_PREDICATES_H
-#define LIBRARY_PREDICATES_H
+#ifndef FLUIDSIM3D_PREDICATES_H
+#define FLUIDSIM3D_PREDICATES_H
 
 #include "GridUtilities.h"
-#include "Vec.h"
 
-namespace FluidSim3D::SurfaceTrackers
+namespace FluidSim3D
 {
-using namespace Utilities;
-
-using REAL = float;
-using Vec3R = Vec<3, REAL>;
+    
+using REAL = double;
+using Vec3R = Vec3t<REAL>;
 
 REAL exactinit();  // call this before anything else
 
@@ -37,6 +35,6 @@ bool zCastIntersection(const Vec3R& a, const Vec3R& q, const Vec3R& r, const Vec
 
 IntersectionLabels exactTriIntersect(Vec3R a, Vec3R q, Vec3R r, Vec3R s, Axis axis);
 
-}  // namespace FluidSim3D::SurfaceTrackers
+}
 
 #endif

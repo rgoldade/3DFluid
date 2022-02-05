@@ -1,5 +1,5 @@
-#ifndef LIBRARY_TIMER_H
-#define LIBRARY_TIMER_H
+#ifndef FLUIDSIM3D_TIMER_H
+#define FLUIDSIM3D_TIMER_H
 
 #ifdef _MSC_VER
 #include <Windows.h>
@@ -16,7 +16,7 @@
 //
 ////////////////////////////////////
 
-namespace FluidSim3D::Utilities
+namespace FluidSim3D
 {
 class Timer
 {
@@ -32,13 +32,13 @@ public:
 #endif
     }
 
-    float stop()
+    double stop()
     {
 #ifdef _MSC_VER
         QueryPerformanceCounter(&EndingTime);
         ElapsedMicroseconds.QuadPart = EndingTime.QuadPart - StartingTime.QuadPart;
 
-        return float(ElapsedMicroseconds.QuadPart) / float(Frequency.QuadPart);
+        return double(ElapsedMicroseconds.QuadPart) / double(Frequency.QuadPart);
 #else
 
         struct timezone tz;
@@ -68,5 +68,5 @@ private:
 #endif
 };
 
-}  // namespace FluidSim3D::Utilities
+}
 #endif

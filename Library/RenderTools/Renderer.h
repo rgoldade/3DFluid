@@ -1,5 +1,5 @@
-#ifndef LIBRARY_RENDERER_H
-#define LIBRARY_RENDERER_H
+#ifndef FLUIDSIM3D_RENDERER_H
+#define FLUIDSIM3D_RENDERER_H
 
 #include <functional>
 
@@ -11,7 +11,6 @@
 
 #include "Camera3D.h"
 #include "Utilities.h"
-#include "Vec.h"
 
 ///////////////////////////////////
 //
@@ -25,14 +24,13 @@
 //
 ////////////////////////////////////
 
-namespace FluidSim3D::RenderTools
+namespace FluidSim3D
 {
-using namespace Utilities;
 
 class Renderer
 {
 public:
-    Renderer(const char* title, const Vec2i& windowSize, const Vec2f& screenOrigin, float screenHeight, int* argc,
+    Renderer(const char* title, const Vec2i& windowSize, const Vec2d& screenOrigin, double screenHeight, int* argc,
              char** argv);
 
     void display();
@@ -47,18 +45,18 @@ public:
     void setUserMouseDrag(const std::function<void(int, int)>& mouseDragFunction);
     void setUserDisplay(const std::function<void()>& displayFunction);
 
-    void addPoint(const Vec3f& point, const Vec3f& colour = Vec3f(0), float size = 1);
+    void addPoint(const Vec3d& point, const Vec3d& colour = Vec3d::Zero(), double size = 1);
 
-    void addPoints(const std::vector<Vec3f>& points, const Vec3f& colour = Vec3f(0), float size = 1);
+    void addPoints(const VecVec3d& points, const Vec3d& colour = Vec3d::Zero(), double size = 1);
 
-    void addLine(const Vec3f& startingPoint, const Vec3f& endingPoint, const Vec3f& colour = Vec3f(0),
-                 float lineWidth = 1);
+    void addLine(const Vec3d& startingPoint, const Vec3d& endingPoint, const Vec3d& colour = Vec3d::Zero(),
+                 double lineWidth = 1);
 
-    void addLines(const std::vector<Vec3f>& startingPoints, const std::vector<Vec3f>& endingPoints, const Vec3f& colour,
-                  float lineWidth = 1);
+    void addLines(const VecVec3d& startingPoints, const VecVec3d& endingPoints, const Vec3d& colour,
+                  double lineWidth = 1);
 
-    void addTriFaces(const std::vector<Vec3f>& vertices, const std::vector<Vec3f>& normals,
-                     const std::vector<Vec3i>& faces, const Vec3f& faceColour);
+    void addTriFaces(const VecVec3d& vertices, const VecVec3d& normals,
+                     const VecVec3i& faces, const Vec3d& faceColour);
 
     void drawPrimitives() const;
 
@@ -68,28 +66,28 @@ public:
     void run();
 
 private:
-    std::vector<std::vector<Vec3f>> myPoints;
-    std::vector<Vec3f> myPointColours;
-    std::vector<float> myPointSizes;
+    std::vector<VecVec3d> myPoints;
+    VecVec3d myPointColours;
+    std::vector<double> myPointSizes;
 
-    std::vector<std::vector<Vec3f>> myLineStartingPoints;
-    std::vector<std::vector<Vec3f>> myLineEndingPoints;
-    std::vector<Vec3f> myLineColours;
-    std::vector<float> myLineWidths;
+    std::vector<VecVec3d> myLineStartingPoints;
+    std::vector<VecVec3d> myLineEndingPoints;
+    VecVec3d myLineColours;
+    std::vector<double> myLineWidths;
 
-    std::vector<std::vector<Vec3f>> myTriVertices;
-    std::vector<std::vector<Vec3f>> myTriNormals;
-    std::vector<std::vector<Vec3i>> myTriFaces;
-    std::vector<Vec3f> myTriFaceColours;
+    std::vector<VecVec3d> myTriVertices;
+    std::vector<VecVec3d> myTriNormals;
+    std::vector<VecVec3i> myTriFaces;
+    VecVec3d myTriFaceColours;
 
     // width, height
     Vec2i myWindowSize;
 
-    Vec2f myCurrentScreenOrigin;
-    float myCurrentScreenHeight;
+    Vec2d myCurrentScreenOrigin;
+    double myCurrentScreenHeight;
 
-    Vec2f myDefaultScreenOrigin;
-    float myDefaultScreenHeight;
+    Vec2d myDefaultScreenOrigin;
+    double myDefaultScreenHeight;
 
     // Mouse specific state
     Vec2i myMousePosition;
@@ -112,11 +110,11 @@ private:
 
     // Simple material and lights
     void setGenericLights(void) const;
-    void setGenericMaterial(float r, float g, float b, GLenum face) const;
+    void setGenericMaterial(double r, double g, double b, GLenum face) const;
 
     // 3-D Camera object
     Camera3D* myCamera;
 };
 
-}  // namespace FluidSim3D::RenderTools
+}
 #endif

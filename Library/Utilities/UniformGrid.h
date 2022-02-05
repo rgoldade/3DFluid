@@ -1,10 +1,9 @@
-#ifndef LIBRARY_UNIFORM_GRID_H
-#define LIBRARY_UNIFORM_GRID_H
+#ifndef FLUIDSIM3D_UNIFORM_GRID_H
+#define FLUIDSIM3D_UNIFORM_GRID_H
 
 #include <vector>
 
 #include "Utilities.h"
-#include "Vec.h"
 
 ///////////////////////////////////
 //
@@ -18,13 +17,13 @@
 //
 ////////////////////////////////////
 
-namespace FluidSim3D::Utilities
+namespace FluidSim3D
 {
 template <typename T>
 class UniformGrid
 {
 public:
-    UniformGrid() : mySize(Vec3i(0)) {}
+    UniformGrid() : mySize(Vec3i::Zero()) {}
 
     UniformGrid(const Vec3i& size) : mySize(size)
     {
@@ -37,7 +36,8 @@ public:
     {
         for (int axis : {0, 1, 2}) assert(size[axis] >= 0);
 
-        myGrid.resize(mySize[0] * mySize[1] * mySize[2], value);
+        myGrid.resize(mySize[0] * mySize[1] * mySize[2]);
+        myGrid.array() = value;
     }
 
     // Accessor is z-major because the inside loop for most processes is naturally z. Should give better cache
@@ -63,18 +63,17 @@ public:
 
     void clear()
     {
-        mySize = Vec3i(0);
-        myGrid.clear();
+        mySize.setZero();
+        myGrid.resize(0);
     }
 
-    bool empty() const { return myGrid.empty(); }
+    bool empty() const { return myGrid.rows() == 0; }
 
     void resize(const Vec3i& newSize)
     {
         for (int axis : {0, 1, 2}) assert(newSize[axis] >= 0);
 
         mySize = newSize;
-        myGrid.clear();
         myGrid.resize(mySize[0] * mySize[1] * mySize[2]);
     }
 
@@ -83,16 +82,21 @@ public:
         for (int axis : {0, 1, 2}) assert(newSize[axis] >= 0);
 
         mySize = newSize;
-        myGrid.clear();
-        myGrid.resize(mySize[0] * mySize[1] * mySize[2], value);
+        myGrid.resize(mySize[0] * mySize[1] * mySize[2]);
+        myGrid.array() = value;
+    }
+
+    void reset(const T& value)
+    {
+        myGrid.array() = value;;
     }
 
     const Vec3i& size() const { return mySize; }
     int voxelCount() const { return mySize[0] * mySize[1] * mySize[2]; }
 
-    int flatten(const Vec3i& coord) const { return coord[2] + mySize[2] * coord[1] + mySize[2] * mySize[1] * coord[0]; }
+    FORCE_INLINE int flatten(const Vec3i& coord) const { return coord[2] + mySize[2] * coord[1] + mySize[2] * mySize[1] * coord[0]; }
 
-    Vec3i unflatten(int index) const
+    FORCE_INLINE Vec3i unflatten(int index) const
     {
         assert(index >= 0 && index < voxelCount());
 
@@ -113,10 +117,10 @@ public:
     }
 
 protected:
-    // TODO: change this to vector of vector - x axis vectors of yz axis vectors
-    std::vector<T> myGrid;
+    VectorXt<T> myGrid;
     Vec3i mySize;
 };
 
-}  // namespace FluidSim3D::Utilities
+}
+
 #endif

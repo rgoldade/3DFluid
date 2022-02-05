@@ -9,12 +9,8 @@
 #include "Transform.h"
 #include "TriMesh.h"
 #include "Utilities.h"
-#include "Vec.h"
 
-using namespace FluidSim3D::RenderTools;
-using namespace FluidSim3D::SurfaceTrackers;
-using namespace FluidSim3D::SimTools;
-using namespace FluidSim3D::Utilities;
+using namespace FluidSim3D;
 
 static std::unique_ptr<Renderer> renderer;
 static std::unique_ptr<Camera3D> camera;
@@ -28,19 +24,19 @@ static bool isDisplayDirty = true;
 static bool drawSolidBoundaries = true;
 static bool drawLiquidVelocities = true;
 
-static float planePosition = .5;
-static float planeDX = .05;
+static double planePosition = .5;
+static double planeDX = .05;
 static Axis planeAxis = Axis::ZAXIS;
 
 static LevelSet seedSurface;
 
 static Transform xform;
 
-static float seedTime = 0;
-static constexpr float seedPeriod = 1;
-static constexpr float dt = 1. / 30.;
+static double seedTime = 0;
+static constexpr double seedPeriod = 1;
+static constexpr double dt = 1. / 30.;
 
-static constexpr float cfl = 5.;
+static constexpr double cfl = 5.;
 
 void display()
 {
@@ -48,17 +44,17 @@ void display()
     {
         std::cout << "\nStart of frame: " << frameCount << std::endl;
 
-        float frameTime = 0.;
+        double frameTime = 0.;
         while (frameTime < dt)
         {
             // Set CFL condition
-            float speed = simulator->maxVelocityMagnitude();
-            float localDt = dt - frameTime;
+            double speed = simulator->maxVelocityMagnitude();
+            double localDt = dt - frameTime;
             assert(localDt >= 0);
 
             if (speed > 1E-6)
             {
-                float cflDt = cfl * xform.dx() / speed;
+                double cflDt = cfl * xform.dx() / speed;
                 if (localDt > cflDt)
                 {
                     localDt = cflDt;
@@ -75,7 +71,7 @@ void display()
             }
 
             // Add gravity
-            simulator->addForce(localDt, Vec3f(0, -9.8, 0));
+            simulator->addForce(localDt, Vec3d(0, -9.8, 0));
 
             // Projection set unfortunately includes viscosity at the moment
             simulator->runTimestep(localDt);
@@ -131,23 +127,23 @@ void keyboard(unsigned char key, int x, int y)
 
 int main(int argc, char** argv)
 {
-    float dx = .05;
-    float solidSphereRadius = 2;
-    Vec3f topRightCorner(solidSphereRadius + 15 * dx);
-    Vec3f bottomLeftCorner(-solidSphereRadius - 15 * dx);
-    Vec3i gridSize = Vec3i((topRightCorner - bottomLeftCorner) / dx);
+    double dx = .1;
+    double solidSphereRadius = 2;
+    Vec3d topRightCorner = Vec3d::Constant(solidSphereRadius + 15 * dx);
+    Vec3d bottomLeftCorner = Vec3d::Constant(-solidSphereRadius - 15 * dx);
+    Vec3i gridSize = ((topRightCorner - bottomLeftCorner) / dx).cast<int>();
     xform = Transform(dx, bottomLeftCorner);
-    Vec3f center = .5 * (topRightCorner + bottomLeftCorner);
+    Vec3d center = .5 * (topRightCorner + bottomLeftCorner);
 
-    renderer = std::make_unique<Renderer>("Levelset liquid simulator", Vec2i(1000),
-                                          Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]),
+    renderer = std::make_unique<Renderer>("Levelset liquid simulator", Vec2i::Constant(1000),
+                                          Vec2d(bottomLeftCorner[0], bottomLeftCorner[1]),
                                           topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
     camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 6, 0., 0.);
     renderer->setCamera(camera.get());
 
     // Build initial liquid geometry
 
-    TriMesh liquidMesh = makeSphereMesh(center - Vec3f(0, .65, 0), 1, .5 * dx);
+    TriMesh liquidMesh = makeSphereMesh(center - Vec3d(0, .65, 0), 1, 3);
     assert(liquidMesh.unitTestMesh());
 
     LevelSet liquidSurface(xform, gridSize, 5);
@@ -155,15 +151,15 @@ int main(int argc, char** argv)
 
     // Build seed liquid geometry
 
-    Vec3f seedCenter = center + Vec3f(.6, .6, 0);
-    TriMesh seedMesh = makeCubeMesh(seedCenter, Vec3f(.5));
+    Vec3d seedCenter = center + Vec3d(.6, .6, 0);
+    TriMesh seedMesh = makeCubeMesh(seedCenter, Vec3d::Constant(.5));
 
     seedSurface = LevelSet(xform, gridSize, 5);
     seedSurface.initFromMesh(seedMesh, false);
 
     // Build solid boundary
 
-    TriMesh solidMesh = makeSphereMesh(center, 2, .5 * dx);
+    TriMesh solidMesh = makeSphereMesh(center, 2, 3);
     solidMesh.reverse();
     assert(solidMesh.unitTestMesh());
 

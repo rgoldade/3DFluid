@@ -6,11 +6,12 @@
 #include "LevelSet.h"
 #include "tbb/tbb.h"
 
-namespace FluidSim3D::SimTools
+namespace FluidSim3D
 {
-PressureProjection::PressureProjection(const LevelSet& surface, const VectorGrid<float>& cutCellWeights,
-                                       const VectorGrid<float>& ghostFluidWeights,
-                                       const VectorGrid<float>& solidVelocity)
+PressureProjection::PressureProjection(const LevelSet& surface,
+                                        const VectorGrid<double>& cutCellWeights,
+                                        const VectorGrid<double>& ghostFluidWeights,
+                                        const VectorGrid<double>& solidVelocity)
     : mySurface(surface),
       myCutCellWeights(cutCellWeights),
       myGhostFluidWeights(ghostFluidWeights),
@@ -37,12 +38,12 @@ PressureProjection::PressureProjection(const LevelSet& surface, const VectorGrid
 
     assert(solidVelocity.isGridMatched(cutCellWeights) && solidVelocity.isGridMatched(ghostFluidWeights));
 
-    myPressure = ScalarGrid<float>(surface.xform(), surface.size(), 0);
-    myValidFaces = VectorGrid<VisitedCellLabels>(surface.xform(), surface.size(), VisitedCellLabels::UNVISITED_CELL,
+    myPressure = ScalarGrid<double>(surface.xform(), surface.size(), 0);
+    myValidFaces = VectorGrid<VisitedCellLabels>(surface.xform(), surface.size(), Vec3t<VisitedCellLabels>::Constant(VisitedCellLabels::UNVISITED_CELL),
                                                  VectorGridSettings::SampleType::STAGGERED);
 }
 
-void PressureProjection::project(VectorGrid<float>& velocity)
+void PressureProjection::project(VectorGrid<double>& velocity)
 {
     assert(velocity.isGridMatched(mySolidVelocity));
 
@@ -55,35 +56,35 @@ void PressureProjection::project(VectorGrid<float>& velocity)
 
     UniformGrid<MaterialLabels> materialCellLabels(mySurface.size(), MaterialLabels::SOLID_CELL);
 
-    tbb::parallel_for(tbb::blocked_range<int>(0, materialCellLabels.voxelCount(), tbbLightGrainSize),
-                      [&](const tbb::blocked_range<int>& range) {
-                          for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
-                          {
-                              Vec3i cell = materialCellLabels.unflatten(cellIndex);
+    tbb::parallel_for(tbb::blocked_range<int>(0, materialCellLabels.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+    {
+        for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+        {
+            Vec3i cell = materialCellLabels.unflatten(cellIndex);
 
-                              bool isFluidCell = false;
+            bool isFluidCell = false;
 
-                              for (int axis = 0; axis < 3 && !isFluidCell; ++axis)
-                                  for (int direction : {0, 1})
-                                  {
-                                      Vec3i face = cellToFace(cell, axis, direction);
+            for (int axis = 0; axis < 3 && !isFluidCell; ++axis)
+                for (int direction : {0, 1})
+                {
+                    Vec3i face = cellToFace(cell, axis, direction);
 
-                                      if (myCutCellWeights(face, axis) > 0)
-                                      {
-                                          isFluidCell = true;
-                                          break;
-                                      }
-                                  }
+                    if (myCutCellWeights(face, axis) > 0)
+                    {
+                        isFluidCell = true;
+                        break;
+                    }
+                }
 
-                              if (isFluidCell)
-                              {
-                                  if (mySurface(cell) <= 0)
-                                      materialCellLabels(cell) = MaterialLabels::LIQUID_CELL;
-                                  else
-                                      materialCellLabels(cell) = MaterialLabels::AIR_CELL;
-                              }
-                          }
-                      });
+            if (isFluidCell)
+            {
+                if (mySurface(cell) <= 0)
+                    materialCellLabels(cell) = MaterialLabels::LIQUID_CELL;
+                else
+                    materialCellLabels(cell) = MaterialLabels::AIR_CELL;
+            }
+        }
+    });
 
     constexpr int UNLABELLED_CELL = -1;
 
@@ -91,7 +92,8 @@ void PressureProjection::project(VectorGrid<float>& velocity)
 
     int liquidCellCount = 0;
 
-    forEachVoxelRange(Vec3i(0), liquidCellIndices.size(), [&](const Vec3i& cell) {
+    forEachVoxelRange(Vec3i::Zero(), liquidCellIndices.size(), [&](const Vec3i& cell)
+    {
         if (materialCellLabels(cell) == MaterialLabels::LIQUID_CELL) liquidCellIndices(cell) = liquidCellCount++;
     });
 
@@ -100,91 +102,90 @@ void PressureProjection::project(VectorGrid<float>& velocity)
 
     tbb::enumerable_thread_specific<std::vector<Eigen::Triplet<SolveReal>>> parallelSparseMatrixElements;
 
-    tbb::parallel_for(
-        tbb::blocked_range<int>(0, liquidCellIndices.voxelCount(), tbbLightGrainSize),
-        [&](const tbb::blocked_range<int>& range) {
-            auto& localSparseMatrixElements = parallelSparseMatrixElements.local();
+    tbb::parallel_for(tbb::blocked_range<int>(0, liquidCellIndices.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+    {
+        auto& localSparseMatrixElements = parallelSparseMatrixElements.local();
 
-            for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+        for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+        {
+            Vec3i cell = liquidCellIndices.unflatten(cellIndex);
+
+            int liquidIndex = liquidCellIndices(cell);
+
+            if (liquidIndex >= 0)
             {
-                Vec3i cell = liquidCellIndices.unflatten(cellIndex);
+                assert(materialCellLabels(cell) == MaterialLabels::LIQUID_CELL);
 
-                int liquidIndex = liquidCellIndices(cell);
+                // Compute divergence to add to RHS
+                SolveReal divergence = 0;
 
-                if (liquidIndex >= 0)
-                {
-                    assert(materialCellLabels(cell) == MaterialLabels::LIQUID_CELL);
+                for (int axis : {0, 1, 2})
+                    for (int direction : {0, 1})
+                    {
+                        Vec3i face = cellToFace(cell, axis, direction);
 
-                    // Compute divergence to add to RHS
-                    SolveReal divergence = 0;
+                        SolveReal weight = myCutCellWeights(face, axis);
 
-                    for (int axis : {0, 1, 2})
-                        for (int direction : {0, 1})
+                        SolveReal sign = (direction == 0) ? 1 : -1;
+
+                        // Add divergence from faces
+                        if (weight > 0) divergence += sign * weight * velocity(face, axis);
+                        if (weight < 1.) divergence += sign * (1. - weight) * mySolidVelocity(face, axis);
+                    }
+
+                rhsVector(liquidIndex) = divergence;
+
+                SolveReal diagonal = 0;
+
+                for (int axis : {0, 1, 2})
+                    for (int direction : {0, 1})
+                    {
+                        Vec3i adjacentCell = cellToCell(cell, axis, direction);
+
+                        // Bounds check. If out-of-bounds, treat like a stationary grid-aligned solid.
+                        if (adjacentCell[axis] < 0 || adjacentCell[axis] >= mySurface.size()[axis]) continue;
+
+                        Vec3i face = cellToFace(cell, axis, direction);
+
+                        SolveReal weight = myCutCellWeights(face, axis);
+
+                        if (weight > 0)
                         {
-                            Vec3i face = cellToFace(cell, axis, direction);
-
-                            SolveReal weight = myCutCellWeights(face, axis);
-
-                            SolveReal sign = (direction == 0) ? 1 : -1;
-
-                            // Add divergence from faces
-                            if (weight > 0) divergence += sign * weight * velocity(face, axis);
-                            if (weight < 1.) divergence += sign * (1. - weight) * mySolidVelocity(face, axis);
-                        }
-
-                    rhsVector(liquidIndex) = divergence;
-
-                    SolveReal diagonal = 0;
-
-                    for (int axis : {0, 1, 2})
-                        for (int direction : {0, 1})
-                        {
-                            Vec3i adjacentCell = cellToCell(cell, axis, direction);
-
-                            // Bounds check. If out-of-bounds, treat like a stationary grid-aligned solid.
-                            if (adjacentCell[axis] < 0 || adjacentCell[axis] >= mySurface.size()[axis]) continue;
-
-                            Vec3i face = cellToFace(cell, axis, direction);
-
-                            SolveReal weight = myCutCellWeights(face, axis);
-
-                            if (weight > 0)
+                            int adjacentLiquidIndex = liquidCellIndices(adjacentCell);
+                            if (adjacentLiquidIndex >= 0)
                             {
-                                int adjacentLiquidIndex = liquidCellIndices(adjacentCell);
-                                if (adjacentLiquidIndex >= 0)
-                                {
-                                    assert(materialCellLabels(adjacentCell) == MaterialLabels::LIQUID_CELL);
+                                assert(materialCellLabels(adjacentCell) == MaterialLabels::LIQUID_CELL);
 
-                                    localSparseMatrixElements.emplace_back(liquidIndex, adjacentLiquidIndex, -weight);
-                                    diagonal += weight;
-                                }
-                                else
-                                {
-                                    assert(materialCellLabels(adjacentCell) == MaterialLabels::AIR_CELL);
-
-                                    SolveReal theta = myGhostFluidWeights(face, axis);
-
-                                    theta = Utilities::clamp(theta, SolveReal(.01), SolveReal(1));
-                                    diagonal += weight / theta;
-                                }
+                                localSparseMatrixElements.emplace_back(liquidIndex, adjacentLiquidIndex, -weight);
+                                diagonal += weight;
                             }
                             else
-                                assert(materialCellLabels(adjacentCell) == MaterialLabels::SOLID_CELL);
+                            {
+                                assert(materialCellLabels(adjacentCell) == MaterialLabels::AIR_CELL);
+
+                                SolveReal theta = myGhostFluidWeights(face, axis);
+
+                                theta = std::clamp(theta, SolveReal(.01), SolveReal(1));
+                                diagonal += weight / theta;
+                            }
                         }
-
-                    assert(diagonal > 0);
-                    localSparseMatrixElements.emplace_back(liquidIndex, liquidIndex, diagonal);
-
-                    if (myUseInitialGuessPressure)
-                    {
-                        assert(myInitialGuessPressure != nullptr);
-                        initialGuessVector(liquidIndex) = (*myInitialGuessPressure)(cell);
+                        else
+                            assert(materialCellLabels(adjacentCell) == MaterialLabels::SOLID_CELL);
                     }
+
+                assert(diagonal > 0);
+                localSparseMatrixElements.emplace_back(liquidIndex, liquidIndex, diagonal);
+
+                if (myUseInitialGuessPressure)
+                {
+                    assert(myInitialGuessPressure != nullptr);
+                    initialGuessVector(liquidIndex) = (*myInitialGuessPressure)(cell);
                 }
-                else
-                    assert(materialCellLabels(cell) != MaterialLabels::LIQUID_CELL);
             }
-        });
+            else
+                assert(materialCellLabels(cell) != MaterialLabels::LIQUID_CELL);
+        }
+    });
 
     std::vector<Eigen::Triplet<SolveReal>> sparseMatrixElements;
     mergeLocalThreadVectors(sparseMatrixElements, parallelSparseMatrixElements);
@@ -217,93 +218,92 @@ void PressureProjection::project(VectorGrid<float>& velocity)
     }
 
     // Copy resulting vector to pressure grid
-    tbb::parallel_for(tbb::blocked_range<int>(0, liquidCellIndices.voxelCount(), tbbLightGrainSize),
-                      [&](const tbb::blocked_range<int>& range) {
-                          for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
-                          {
-                              Vec3i cell = liquidCellIndices.unflatten(cellIndex);
+    tbb::parallel_for(tbb::blocked_range<int>(0, liquidCellIndices.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+    {
+        for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+        {
+            Vec3i cell = liquidCellIndices.unflatten(cellIndex);
 
-                              int liquidIndex = liquidCellIndices(cell);
+            int liquidIndex = liquidCellIndices(cell);
 
-                              if (liquidIndex >= 0)
-                              {
-                                  assert(materialCellLabels(cell) == MaterialLabels::LIQUID_CELL);
-                                  myPressure(cell) = solutionVector(liquidIndex);
-                              }
-                              else
-                                  assert(materialCellLabels(cell) != MaterialLabels::LIQUID_CELL);
-                          }
-                      });
+            if (liquidIndex >= 0)
+            {
+                assert(materialCellLabels(cell) == MaterialLabels::LIQUID_CELL);
+                myPressure(cell) = solutionVector(liquidIndex);
+            }
+            else
+                assert(materialCellLabels(cell) != MaterialLabels::LIQUID_CELL);
+        }
+    });
 
     // Build valid faces
     for (int axis : {0, 1, 2})
     {
-        tbb::parallel_for(
-            tbb::blocked_range<int>(0, myValidFaces.grid(axis).voxelCount(), tbbLightGrainSize),
-            [&](const tbb::blocked_range<int>& range) {
-                for (int faceIndex = range.begin(); faceIndex != range.end(); ++faceIndex)
+        tbb::parallel_for(tbb::blocked_range<int>(0, myValidFaces.grid(axis).voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+        {
+            for (int faceIndex = range.begin(); faceIndex != range.end(); ++faceIndex)
+            {
+                Vec3i face = myValidFaces.grid(axis).unflatten(faceIndex);
+
+                if (myCutCellWeights(face, axis) > 0)
                 {
-                    Vec3i face = myValidFaces.grid(axis).unflatten(faceIndex);
+                    Vec3i backwardCell = faceToCell(face, axis, 0);
+                    Vec3i forwardCell = faceToCell(face, axis, 1);
 
-                    if (myCutCellWeights(face, axis) > 0)
+                    if (!(backwardCell[axis] < 0 || forwardCell[axis] >= mySurface.size()[axis]))
                     {
-                        Vec3i backwardCell = faceToCell(face, axis, 0);
-                        Vec3i forwardCell = faceToCell(face, axis, 1);
-
-                        if (!(backwardCell[axis] < 0 || forwardCell[axis] >= mySurface.size()[axis]))
+                        if (liquidCellIndices(backwardCell) >= 0 || liquidCellIndices(forwardCell) >= 0)
                         {
-                            if (liquidCellIndices(backwardCell) >= 0 || liquidCellIndices(forwardCell) >= 0)
-                            {
-                                assert(materialCellLabels(backwardCell) == MaterialLabels::LIQUID_CELL ||
-                                       materialCellLabels(forwardCell) == MaterialLabels::LIQUID_CELL);
+                            assert(materialCellLabels(backwardCell) == MaterialLabels::LIQUID_CELL ||
+                                    materialCellLabels(forwardCell) == MaterialLabels::LIQUID_CELL);
 
-                                myValidFaces(face, axis) = VisitedCellLabels::FINISHED_CELL;
-                            }
-                            else
-                                myValidFaces(face, axis) = VisitedCellLabels::UNVISITED_CELL;
+                            myValidFaces(face, axis) = VisitedCellLabels::FINISHED_CELL;
                         }
                         else
                             myValidFaces(face, axis) = VisitedCellLabels::UNVISITED_CELL;
                     }
+                    else
+                        myValidFaces(face, axis) = VisitedCellLabels::UNVISITED_CELL;
                 }
-            });
+            }
+        });
     }
 
     // Apply pressure update
     for (int axis : {0, 1, 2})
     {
-        tbb::parallel_for(tbb::blocked_range<int>(0, myValidFaces.grid(axis).voxelCount(), tbbLightGrainSize),
-                          [&](const tbb::blocked_range<int>& range) {
-                              for (int faceIndex = range.begin(); faceIndex != range.end(); ++faceIndex)
-                              {
-                                  Vec3i face = myValidFaces.grid(axis).unflatten(faceIndex);
+        tbb::parallel_for(tbb::blocked_range<int>(0, myValidFaces.grid(axis).voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+        {
+            for (int faceIndex = range.begin(); faceIndex != range.end(); ++faceIndex)
+            {
+                Vec3i face = myValidFaces.grid(axis).unflatten(faceIndex);
 
-                                  if (myValidFaces(face, axis) == VisitedCellLabels::FINISHED_CELL)
-                                  {
-                                      Vec3i backwardCell = faceToCell(face, axis, 0);
-                                      Vec3i forwardCell = faceToCell(face, axis, 1);
+                if (myValidFaces(face, axis) == VisitedCellLabels::FINISHED_CELL)
+                {
+                    Vec3i backwardCell = faceToCell(face, axis, 0);
+                    Vec3i forwardCell = faceToCell(face, axis, 1);
 
-                                      assert(myCutCellWeights(face, axis) > 0);
-                                      assert(backwardCell[axis] >= 0 && forwardCell[axis] <= mySurface.size()[axis]);
-                                      assert(materialCellLabels(backwardCell) == MaterialLabels::LIQUID_CELL ||
-                                             materialCellLabels(forwardCell) == MaterialLabels::LIQUID_CELL);
+                    assert(myCutCellWeights(face, axis) > 0);
+                    assert(backwardCell[axis] >= 0 && forwardCell[axis] <= mySurface.size()[axis]);
+                    assert(materialCellLabels(backwardCell) == MaterialLabels::LIQUID_CELL ||
+                            materialCellLabels(forwardCell) == MaterialLabels::LIQUID_CELL);
 
-                                      SolveReal gradient = myPressure(forwardCell) - myPressure(backwardCell);
+                    SolveReal gradient = myPressure(forwardCell) - myPressure(backwardCell);
 
-                                      if (materialCellLabels(backwardCell) == MaterialLabels::AIR_CELL ||
-                                          materialCellLabels(forwardCell) == MaterialLabels::AIR_CELL)
-                                      {
-                                          SolveReal theta = myGhostFluidWeights(face, axis);
-                                          theta = Utilities::clamp(theta, SolveReal(.01), SolveReal(1));
+                    if (materialCellLabels(backwardCell) == MaterialLabels::AIR_CELL ||
+                        materialCellLabels(forwardCell) == MaterialLabels::AIR_CELL)
+                    {
+                        SolveReal theta = myGhostFluidWeights(face, axis);
+                        theta = std::clamp(theta, SolveReal(.01), SolveReal(1));
 
-                                          gradient /= theta;
-                                      }
+                        gradient /= theta;
+                    }
 
-                                      velocity(face, axis) -= gradient;
-                                  }
-                              }
-                          });
+                    velocity(face, axis) -= gradient;
+                }
+            }
+        });
     }
 }
 
-}  // namespace FluidSim3D::SimTools
+}

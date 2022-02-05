@@ -10,12 +10,8 @@
 #include "Transform.h"
 #include "TriMesh.h"
 #include "Utilities.h"
-#include "Vec.h"
 
-using namespace FluidSim3D::RenderTools;
-using namespace FluidSim3D::SimTools;
-using namespace FluidSim3D::SurfaceTrackers;
-using namespace FluidSim3D::Utilities;
+using namespace FluidSim3D;
 
 static std::unique_ptr<Renderer> renderer;
 static std::unique_ptr<Camera3D> camera;
@@ -25,15 +21,15 @@ static bool runSimulation = false;
 static bool runSingleTimestep = false;
 static bool isDisplayDirty = true;
 
-static float planePosition = .5;
-static float planeDX = .05;
+static double planePosition = .5;
+static double planeDX = .05;
 static Axis planeAxis = Axis::ZAXIS;
 
 static std::unique_ptr<DeformationField> simulator;
 static std::unique_ptr<LevelSet> implicitSurface;
 static TriMesh triMesh;
 
-static constexpr float dt = 1. / 50.;
+static constexpr double dt = 1. / 50.;
 
 void keyboard(unsigned char key, int x, int y)
 {
@@ -77,9 +73,9 @@ void display()
     {
         renderer->clear();
 
-        triMesh.drawMesh(*renderer, true /* draw triangle faces */, Vec3f(.5), false /* don't render triangle normals*/,
-                         Vec3f(1, 0, 0), false /*don't render mesh vertices*/, Vec3f(0), true /* draw triangle edges*/,
-                         Vec3f(0));
+        triMesh.drawMesh(*renderer, true /* draw triangle faces */, Vec3d::Constant(.5), false /* don't render triangle normals*/,
+                         Vec3d(1, 0, 0), false /*don't render mesh vertices*/, Vec3d::Zero(), true /* draw triangle edges*/,
+                         Vec3d::Zero());
 
         isDisplayDirty = false;
 
@@ -90,24 +86,23 @@ void display()
 
 int main(int argc, char** argv)
 {
-    float dx = .005;
-    Vec3f topRightCorner(1);
-    Vec3f bottomLeftCorner(0);
-    Vec3i gridSize = Vec3i((topRightCorner - bottomLeftCorner) / dx);
+    double dx = .005;
+    Vec3d topRightCorner = Vec3d::Ones();
+    Vec3d bottomLeftCorner = Vec3d::Zero();
+    Vec3i gridSize = ((topRightCorner - bottomLeftCorner) / dx).cast<int>();
     Transform xform(dx, bottomLeftCorner);
 
     planeDX =
-        std::min(float(1) / float(gridSize[0]), std::min(float(1) / float(gridSize[1]), float(1) / float(gridSize[2])));
+        std::min(double(1) / double(gridSize[0]), std::min(double(1) / double(gridSize[1]), double(1) / double(gridSize[2])));
 
-    renderer =
-        std::make_unique<Renderer>("Level set test", Vec2i(1000), Vec2f(bottomLeftCorner[0], bottomLeftCorner[1]),
+    renderer = std::make_unique<Renderer>("Level set test", Vec2i::Constant(1000), Vec2d(bottomLeftCorner[0], bottomLeftCorner[1]),
                                    topRightCorner[1] - bottomLeftCorner[1], &argc, argv);
     camera = std::make_unique<Camera3D>(.5 * (topRightCorner + bottomLeftCorner), 2.5, 0., 0.);
     renderer->setCamera(camera.get());
 
     simulator = std::make_unique<DeformationField>(0., 3.);
 
-    triMesh = makeSphereMesh(Vec3f(.35), .15, dx);
+    triMesh = makeSphereMesh(Vec3d::Constant(.35), .15, 4);
 
     // Scene settings
     implicitSurface = std::make_unique<LevelSet>(xform, gridSize, 5);

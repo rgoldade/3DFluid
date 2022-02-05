@@ -48,3 +48,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
 add_subdirectory(Library)
 add_subdirectory(Projects)
+
+enable_testing()
+add_subdirectory(UnitTests)

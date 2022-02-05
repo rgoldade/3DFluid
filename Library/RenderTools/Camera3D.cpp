@@ -1,9 +1,9 @@
 #include "Camera3D.h"
 
-namespace FluidSim3D::RenderTools
+namespace FluidSim3D
 {
-Camera3D::Camera3D(const Vec3f& target, float targetDistance, float heading, float pitch, float fieldOfView,
-                   float nearClippingDistance, float farClippingDistance)
+Camera3D::Camera3D(const Vec3d& target, double targetDistance, double heading, double pitch, double fieldOfView,
+                   double nearClippingDistance, double farClippingDistance)
     : myTarget(target),
       myDefaultTarget(target),
       myDistance(targetDistance),
@@ -85,14 +85,14 @@ void Camera3D::transform(const Vec2i& windowSize)
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    gluPerspective(myFieldOfView, windowSize[0] / float(windowSize[1]), myNearClippingDistance, myFaceClippingDistance);
+    gluPerspective(myFieldOfView, windowSize[0] / double(windowSize[1]), myNearClippingDistance, myFaceClippingDistance);
 
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
-    glTranslatef(0, 0, -myDistance);                         // translate target dist away in the z direction
-    glRotatef(-180.f / PI * myPitch, 1, 0, 0);               // rotate pitch in the yz plane
-    glRotatef(-180.f / PI * myHeading, 0, 1, 0);             // rotate heading in the xz plane
-    glTranslatef(-myTarget[0], -myTarget[1], -myTarget[2]);  // translate target to origin
+    glTranslated(0, 0, -myDistance);                         // translate target dist away in the z direction
+    glRotated(-180. / PI * myPitch, 1, 0, 0);               // rotate pitch in the yz plane
+    glRotated(-180. / PI * myHeading, 0, 1, 0);             // rotate heading in the xz plane
+    glTranslated(-myTarget[0], -myTarget[1], -myTarget[2]);  // translate target to origin
 }
 
-}  // namespace FluidSim3D::RenderTools
+}

@@ -1,8 +1,7 @@
-#ifndef LIBRARY_INTEGRATOR_H
-#define LIBRARY_INTEGRATOR_H
+#ifndef FLUIDSIM3D_INTEGRATOR_H
+#define FLUIDSIM3D_INTEGRATOR_H
 
 #include "Utilities.h"
-#include "Vec.h"
 
 ///////////////////////////////////
 //
@@ -14,7 +13,7 @@
 //
 ////////////////////////////////////
 
-namespace FluidSim3D::Utilities
+namespace FluidSim3D
 {
 enum class IntegrationOrder
 {
@@ -23,7 +22,7 @@ enum class IntegrationOrder
 };
 
 template <typename T, typename Function>
-inline T Integrator(float h, const T& x, const Function& f, IntegrationOrder order)
+inline T Integrator(double h, const T& x, const Function& f, IntegrationOrder order)
 {
     T value;
 
@@ -48,6 +47,6 @@ inline T Integrator(float h, const T& x, const Function& f, IntegrationOrder ord
     return value;
 }
 
-}  // namespace FluidSim3D::Utilities
+}
 
 #endif

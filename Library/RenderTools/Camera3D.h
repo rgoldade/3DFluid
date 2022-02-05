@@ -1,5 +1,5 @@
-#ifndef LIBRARY_CAMERA3D_H
-#define LIBRARY_CAMERA3D_H
+#ifndef FLUIDSIM3D_CAMERA3D_H
+#define FLUIDSIM3D_CAMERA3D_H
 
 #ifdef __APPLE__
 #include <GLUT/glut.h>
@@ -8,7 +8,6 @@
 #endif
 
 #include "Utilities.h"
-#include "Vec.h"
 
 ///////////////////////////////////
 //
@@ -20,15 +19,14 @@
 //
 ////////////////////////////////////
 
-namespace FluidSim3D::RenderTools
+namespace FluidSim3D
 {
-using namespace Utilities;
 
 class Camera3D
 {
 public:
-    Camera3D(const Vec3f& target = Vec3f(0), float targetDistance = 1, float heading = 0, float pitch = 0,
-             float fieldOfView = 45, float nearClippingDistance = 0.01, float farClippingDistance = 100.);
+    Camera3D(const Vec3d& target = Vec3d::Zero(), double targetDistance = 1, double heading = 0, double pitch = 0,
+             double fieldOfView = 45, double nearClippingDistance = 0.01, double farClippingDistance = 100.);
 
     void mouse(int button, int state, int x, int y);
     void drag(int x, int y);
@@ -45,17 +43,17 @@ private:
         DOLLY
     };
 
-    Vec3f myTarget, myDefaultTarget;
-    float myDistance, myDefaultDistance;
-    float myHeading, myDefaultHeading;
-    float myPitch, myDefaultPitch;
-    float myFieldOfView;
+    Vec3d myTarget, myDefaultTarget;
+    double myDistance, myDefaultDistance;
+    double myHeading, myDefaultHeading;
+    double myPitch, myDefaultPitch;
+    double myFieldOfView;
 
-    float myNearClippingDistance, myFaceClippingDistance;
+    double myNearClippingDistance, myFaceClippingDistance;
 
     MouseAction myMouseAction;
     Vec2i myOldMouseCoord;
 };
 
-}  // namespace FluidSim3D::RenderTools
+}
 #endif
