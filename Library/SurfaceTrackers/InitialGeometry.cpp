@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <set>
+#include <unordered_map>
 
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
@@ -163,30 +164,72 @@ static TriMesh makeUnitSphereMesh(int subdivisions)
     VecVec3d vertices = ico.vertices();
     VecVec3i triangles = ico.triangles();
 
+    struct VecHash
+    {
+        size_t operator()(const Vec2i& hashVec) const
+        {
+            size_t h = 0;
+            for (int index : {0, 1})
+            {
+                h ^= std::hash<int>{}(hashVec[index])+0x9e3779b9 + (h << 6) + (h >> 2);
+            }
+            return h;
+        }
+    };
+
+    std::unordered_map<Vec2i, int, VecHash> edgeSplitIndex;
+
     for (int iter = 0; iter < subdivisions; ++iter)
     {
         VecVec3i newTriangles;
         newTriangles.reserve(4 * triangles.size());
 
+        edgeSplitIndex.clear();
+        // Split edges and register in hash
+        for (const Vec3i& tri : triangles)
+        {
+            for (int localEdgeIndex : {0, 1, 2})
+            {
+                Vec2i edge{ tri[localEdgeIndex], tri[(localEdgeIndex + 1) % 3] };
+
+                if (edge[0] > edge[1])
+                {
+                    std::swap(edge[0], edge[1]);
+                }
+                
+                // If the edge has not already been registered, add to hash table
+                if (edgeSplitIndex.find(edge) == edgeSplitIndex.end())
+                {
+                    Vec3d edgeMidpoint = (vertices[edge[0]] + vertices[edge[1]]) / 2.;
+                    edgeSplitIndex[edge] = int(vertices.size());
+                    vertices.push_back(edgeMidpoint);                    
+                }
+            }
+        }
+
         // Subdivide triangles
         for (const Vec3i& tri : triangles)
         {
-            Vec3d midpoint01 = (vertices[tri[0]] + vertices[tri[1]]) / 2.;
-            Vec3d midpoint12 = (vertices[tri[1]] + vertices[tri[2]]) / 2.;
-            Vec3d midpoint20 = (vertices[tri[2]] + vertices[tri[0]]) / 2.;
+            std::array<int, 3> midpointVertIndices;
 
-            int vertIndex01 = int(vertices.size());
-            int vertIndex12 = vertIndex01 + 1;
-            int vertIndex20 = vertIndex12 + 1;
-            
-            vertices.push_back(midpoint01);
-            vertices.push_back(midpoint12);
-            vertices.push_back(midpoint20);
+            for (int localEdgeIndex : {0, 1, 2})
+            {
+                Vec2i edge(tri[localEdgeIndex], tri[(localEdgeIndex + 1) % 3]);
 
-            newTriangles.emplace_back(tri[0], vertIndex01, vertIndex20);
-            newTriangles.emplace_back(vertIndex01, tri[1], vertIndex12);
-            newTriangles.emplace_back(vertIndex12, tri[2], vertIndex20);
-            newTriangles.emplace_back(vertIndex01, vertIndex12, vertIndex20);
+                if (edge[0] > edge[1])
+                {
+                    std::swap(edge[0], edge[1]);
+                }
+
+                assert(edgeSplitIndex.find(edge) != edgeSplitIndex.end());
+
+                midpointVertIndices[localEdgeIndex] = int(edgeSplitIndex[edge]);
+            }
+
+            newTriangles.emplace_back(tri[0], midpointVertIndices[0], midpointVertIndices[2]);
+            newTriangles.emplace_back(tri[1], midpointVertIndices[1], midpointVertIndices[0]);
+            newTriangles.emplace_back(tri[2], midpointVertIndices[2], midpointVertIndices[1]);
+            newTriangles.emplace_back(midpointVertIndices[0], midpointVertIndices[1], midpointVertIndices[2]);
         }
 
         std::swap(triangles, newTriangles);

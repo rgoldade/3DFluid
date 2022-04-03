@@ -98,14 +98,16 @@ public:
     bool isTriangleDegenerate(int triFaceIndex) const;
 
     void drawMesh(Renderer& renderer, bool doRenderTriFaces = false, Vec3d triFaceColour = Vec3d::Zero(), bool doRenderTriNormals = false, Vec3d normalColour = Vec3d::Zero(),
-                  bool doRenderVertices = false, Vec3d vertexColour = Vec3d::Zero(), bool doRenderTriEdges = false, Vec3d edgeColour = Vec3d::Zero());
+                  bool doRenderVertices = false, Vec3d vertexColour = Vec3d::Zero(), bool doRenderTriEdges = false, Vec3d edgeColour = Vec3d::Zero(), bool doRenderVertexNormals = false, Vec3d vertexNormalColours = Vec3d::Zero());
 
-    void saveAsOBJ(const std::string &filename) const;
+    void writeAsOBJ(const std::string &filename) const;
 
     template <typename VelocityField>
     void advectMesh(double dt, const VelocityField& vel, IntegrationOrder order);
 
     bool unitTestMesh() const;
+
+    VecVec3d computeVertexNormals() const;
 
 private:
     void initialize(const VecVec3i& faces, const VecVec3d& vertices);

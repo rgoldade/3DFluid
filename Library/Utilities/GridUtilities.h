@@ -101,6 +101,19 @@ FORCE_INLINE Vec3i faceToEdge(const Vec3i& face, int faceAxis, int edgeAxis, int
     return edge;
 }
 
+FORCE_INLINE Vec4i faceToEdgeCCW(const Vec3i& face, int faceAxis, int edgeIndex)
+{
+    assert(faceAxis >= 0 && faceAxis < 3);
+
+    const Vec4i faceToEdgeOffsets[3][4] = { {Vec4i(0, 0, 0, 1), Vec4i(0, 1, 0, 2), Vec4i(0, 0, 1, 1), Vec4i(0, 0, 0, 2)},
+                                               {Vec4i(0, 0, 0, 2), Vec4i(0, 0, 1, 0), Vec4i(1, 0, 0, 2), Vec4i(0, 0, 0, 0)},
+                                               {Vec4i(0, 0, 0, 0), Vec4i(1, 0, 0, 1), Vec4i(0, 1, 0, 0), Vec4i(0, 0, 0, 1)} };
+
+    Vec4i edge = faceToEdgeOffsets[faceAxis][edgeIndex];
+    edge.segment<3>(0) += face;
+    return edge;
+}
+
 FORCE_INLINE Vec3i faceToNode(const Vec3i& face, int faceAxis, int nodeIndex)
 {
     assert(faceAxis >= 0 && faceAxis < 3);
@@ -252,9 +265,9 @@ template <typename Function>
 void forEachVoxelRange(const Vec3i& start, const Vec3i& end, const Function& f)
 {
     Vec3i cell;
-    for (cell[0] = start[0]; cell[0] != end[0]; ++cell[0])
-        for (cell[1] = start[1]; cell[1] != end[1]; ++cell[1])
-            for (cell[2] = start[2]; cell[2] != end[2]; ++cell[2])
+    for (cell[0] = start[0]; cell[0] < end[0]; ++cell[0])
+        for (cell[1] = start[1]; cell[1] < end[1]; ++cell[1])
+            for (cell[2] = start[2]; cell[2] < end[2]; ++cell[2])
                 f(cell);
 }
 

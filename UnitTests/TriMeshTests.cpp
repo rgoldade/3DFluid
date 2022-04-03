@@ -324,3 +324,38 @@ TEST(TRI_MESH_TESTS, ADVECT_TEST)
         EXPECT_TRUE(isNearlyEqual(vertex[2], copyVertex[2]));
     }
 }
+
+TEST(TRI_MESH_TESTS, BARYCENTER_WEIGHT_TEST)
+{
+    double radius = 1.25;
+    Vec3d center = Vec3d::Random();
+    int subdivs = 3;
+    TriMesh mesh = makeSphereMesh(center, radius, subdivs);
+    testTriMesh(mesh);
+
+    for (const Vec3i& tri : mesh.triangles())
+    {
+        {
+            // Test midpoint
+            Vec3d midpoint = (mesh.vertex(tri[0]) + mesh.vertex(tri[1]) + mesh.vertex(tri[2])) / 3.;
+
+            Vec3d barycenterWeights = computeBarycenters(midpoint, mesh.vertex(tri[0]), mesh.vertex(tri[1]), mesh.vertex(tri[2]));
+
+            EXPECT_TRUE(isNearlyEqual(barycenterWeights[0], 1. / 3., 1e-5, false));
+            EXPECT_TRUE(isNearlyEqual(barycenterWeights[1], 1. / 3., 1e-5, false));
+            EXPECT_TRUE(isNearlyEqual(barycenterWeights[2], 1. / 3., 1e-5, false));
+        }
+
+        for (int vertIndex : {0, 1, 2})
+        {
+            // Test vertex
+            Vec3d point = mesh.vertex(tri[vertIndex]);
+
+            Vec3d barycenterWeights = computeBarycenters(point, mesh.vertex(tri[0]), mesh.vertex(tri[1]), mesh.vertex(tri[2]));
+
+            EXPECT_TRUE(isNearlyEqual(barycenterWeights[vertIndex], 1., 1e-5, false));
+            EXPECT_TRUE(isNearlyEqual(barycenterWeights[(vertIndex + 1) % 3], 0., 1e-5, false));
+            EXPECT_TRUE(isNearlyEqual(barycenterWeights[(vertIndex + 2) % 3], 0., 1e-5, false));
+        }
+    }
+}

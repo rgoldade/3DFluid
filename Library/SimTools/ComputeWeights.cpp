@@ -29,15 +29,15 @@ void rotateFaceValues(std::array<double, 4>& phiNodes)
 double fractionInside(std::array<double, 4>& phiNodes)
 {
     // double phiBottomLeft, double phiBottomRight, double phiTopLeft, double phiTopRight)
-    int insideCount = (phiNodes[0] < 0. ? 1 : 0) + (phiNodes[1] < 0. ? 1 : 0) + (phiNodes[2] < 0. ? 1 : 0) +
-                      (phiNodes[3] < 0. ? 1 : 0);
+    int insideCount = (phiNodes[0] <= 0. ? 1 : 0) + (phiNodes[1] <= 0. ? 1 : 0) + (phiNodes[2] <= 0. ? 1 : 0) +
+                      (phiNodes[3] <= 0. ? 1 : 0);
 
     if (insideCount == 4)
         return 1.;
     else if (insideCount == 3)
     {
         // Rotate until the positive value is in the first position
-        while (phiNodes[0] < 0.) rotateFaceValues(phiNodes);
+        while (phiNodes[0] <= 0.) rotateFaceValues(phiNodes);
 
         // Work out the area of the exterior triangle
         double side0 = 1. - lengthFraction(phiNodes[0], phiNodes[3]);
@@ -47,7 +47,7 @@ double fractionInside(std::array<double, 4>& phiNodes)
     else if (insideCount == 2)
     {
         // Rotate until a negative value is in the first position, and the next negative is in either slot 1 or 2.
-        while (phiNodes[0] >= 0. || !(phiNodes[1] < 0. || phiNodes[2] < 0.)) rotateFaceValues(phiNodes);
+        while (phiNodes[0] > 0. || !(phiNodes[1] <= 0. || phiNodes[2] <= 0.)) rotateFaceValues(phiNodes);
 
         if (phiNodes[1] < 0)  // The matching signs are adjacent
         {
@@ -59,7 +59,7 @@ double fractionInside(std::array<double, 4>& phiNodes)
         {
             // Determine the centre point's sign to disambiguate this case
             double phiMiddle = 0.25 * (phiNodes[0] + phiNodes[1] + phiNodes[2] + phiNodes[3]);
-            if (phiMiddle < 0.)
+            if (phiMiddle <= 0.)
             {
                 double area = 0.;
 
@@ -97,7 +97,7 @@ double fractionInside(std::array<double, 4>& phiNodes)
     else if (insideCount == 1)
     {
         // Rotate until the negative value is in the first position
-        while (phiNodes[0] >= 0) rotateFaceValues(phiNodes);
+        while (phiNodes[0] > 0) rotateFaceValues(phiNodes);
 
         // Work out the area of the interior triangle, and subtract from 1.
         double side0 = lengthFraction(phiNodes[0], phiNodes[3]);

@@ -67,7 +67,7 @@ void display()
 
 int main(int argc, char** argv)
 {
-    float dx = .005;
+    double dx = .005;
     Vec3d topRightCorner = Vec3d::Constant(1);
     Vec3d bottomLeftCorner = Vec3d::Constant(-1);
     Vec3i gridSize = Vec3i(((topRightCorner - bottomLeftCorner) / dx).cast<int>());

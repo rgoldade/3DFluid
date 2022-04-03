@@ -10,204 +10,6 @@
 
 namespace FluidSim3D
 {
-// Helper function to project a point to a triangle in 3-D
-static Vec3d pointToTriangleProjection(const Vec3d& point, const Vec3d& vertex0, const Vec3d& vertex1, const Vec3d& vertex2)
-{
-    // Normal form
-    Vec3d E0 = vertex1 - vertex0, E1 = vertex2 - vertex0;
-
-    Vec3d D = vertex0 - point;
-
-    double a = E0.dot(E0);
-    double b = E0.dot(E1);
-    double c = E1.dot(E1);
-    double d = E0.dot(D);
-    double e = E1.dot(D);
-    double f = D.dot(D);
-
-    // TODO: check on abs with determinant incase of sign inversion
-    double det = std::fabs(a * c - b * b);
-    double s = b * e - c * d;
-    double t = b * d - a * e;
-
-    // Logic tree to account for the point projection into the various regions.
-    // Method borrowed from https://www.geometrictools.com/Documentation/DistancePoint3Triangle3.pdf
-    // 	and https://www.mathworks.com/matlabcentral/fileexchange/22857-distance-between-a-point-and-a-triangle-in-3d
-    //
-    //  \      |
-    //	 \reg2 |
-    //	  \    |
-    //	   \   |
-    //	    \  |
-    //	     \ |
-    //	      *P2
-    //	       |\
-	//	       | \
-	//	  reg3 |  \ reg1
-    //	       |   \
-	//	       |reg0\
-	// 	       |     \
-	//         |      \ P1
-    //  -------*-------*------->s
-    //	       | P0     \
-	//    reg4 | reg5    \ reg6
-
-    if (s + t <= det)
-    {
-        if (s < 0)
-        {
-            if (t < 0)  // region 4
-            {
-                if (d < 0)
-                {
-                    t = 0;
-                    if (-d >= a)
-                        s = 1;
-                    else
-                        s = -d / a;
-                }
-                else
-                {
-                    s = 0;
-                    if (e >= 0)
-                        t = 0;
-                    else
-                    {
-                        if (-e >= c)
-                            t = 1;
-                        else
-                            t = -e / c;
-                    }
-                }
-            }
-            else  // region 3
-            {
-                s = 0;
-                if (e >= 0)
-                    t = 0;
-                else
-                {
-                    if (-e >= c)
-                        t = 1;
-                    else
-                        t = -e / c;
-                }
-            }
-        }
-        else if (t < 0)  // region 5
-        {
-            t = 0;
-            if (d >= 0)
-                s = 0;
-            else
-            {
-                if (-d >= a)
-                    s = 1;
-                else
-                    s = -d / a;
-            }
-        }
-        else  // region 0
-        {
-            s = s / det;
-            t = t / det;
-        }
-    }
-    else
-    {
-        if (s < 0)  // region 2
-        {
-            double tmp0 = b + d;
-            double tmp1 = c + e;
-            if (tmp1 > tmp0)
-            {
-                double numer = tmp1 - tmp0;
-                double denom = a - 2. * b + c;
-                if (numer >= denom)
-                {
-                    s = 1;
-                    t = 0;
-                }
-                else
-                {
-                    s = numer / denom;
-                    t = 1 - s;
-                }
-            }
-            else
-            {
-                s = 0;
-                if (tmp1 <= 0)
-                    t = 1;
-                else
-                {
-                    if (e >= 0)
-                        t = 0;
-                    else
-                        t = -e / c;
-                }
-            }
-        }
-        else if (t < 0)  // region 6
-        {
-            double tmp0 = b + e;
-            double tmp1 = a + d;
-            if (tmp1 > tmp0)
-            {
-                double numer = tmp1 - tmp0;
-                double denom = a - 2. * b + c;
-                if (numer >= denom)
-                {
-                    t = 1;
-                    s = 0;
-                }
-                else
-                {
-                    t = numer / denom;
-                    s = 1 - t;
-                }
-            }
-            else
-            {
-                t = 0;
-                if (tmp1 <= 0)
-                    s = 1;
-                else
-                {
-                    if (d >= 0)
-                        s = 0;
-                    else
-                        s = -d / a;
-                }
-            }
-        }
-        else  // region 1
-        {
-            double numer = c + e - b - d;
-            if (numer <= 0)
-            {
-                s = 0;
-                t = 1;
-            }
-            else
-            {
-                double denom = a - 2. * b + c;
-                if (numer >= denom)
-                {
-                    s = 1;
-                    t = 0;
-                }
-                else
-                {
-                    s = numer / denom;
-                    t = 1 - s;
-                }
-            }
-        }
-    }
-
-    return Vec3d(vertex0 + s * E0 + t * E1);
-}
 
 LevelSet::LevelSet()
     : myNarrowBand(0)
@@ -345,13 +147,10 @@ TriMesh LevelSet::buildMesh() const
             {
                 Vec3i cell = dcPointIndices.unflatten(cellIndex);
 
-                Eigen::Matrix3d AtA = Eigen::Matrix3d::Zero();
+                VecVec3d points;
+                VecVec3d normals;
 
-                Vec3d rhs = Vec3d::Zero();
-
-                Vec3d pointCOM = Vec3d::Zero();
-
-                double pointCount = 0;
+                Vec3d averagePoint = Vec3d::Zero();
 
                 for (int edgeAxis : {0, 1, 2})
                     for (int edgeIndex = 0; edgeIndex < 4; ++edgeIndex)
@@ -373,39 +172,83 @@ TriMesh LevelSet::buildMesh() const
                             for (int axis : {0, 1, 2})
                                 assert(point[axis] >= backwardNode[axis] && point[axis] <= forwardNode[axis]);
 
+                            points.push_back(point);
+
+                            averagePoint += point;
+
                             // Find associated surface normal
                             Vec3d localNormal = normal(indexToWorld(point));
 
-                            AtA += localNormal * localNormal.transpose();
-
-                            double normDot = localNormal.dot(point);
-                            rhs += normDot * localNormal;
-
-                            pointCOM += point;
-
-                            ++pointCount;
+                            normals.push_back(localNormal);
                         }
                     }
 
-                if (pointCount > 0)
+                if (points.size() > 0)
                 {
-                    pointCOM.array() /= pointCount;
+                    averagePoint.array() /= double(points.size());
 
-                    // Add zero-length spring to COM
-                    double comWeight = .00001;
-                    AtA += comWeight * Eigen::Matrix3d::Identity();
+                    Matrix3x3d AtA = Matrix3x3d::Zero();
 
-                    rhs += comWeight * pointCOM;
+                    Vec3d rhs = Vec3d::Zero();
 
-                    Vec3d newQEFPoint = AtA.fullPivLu().solve(rhs);
-
-                    for (int axis : {0, 1, 2})
+                    for (int pointIndex = 0; pointIndex < points.size(); ++pointIndex)
                     {
-                        if (newQEFPoint[axis] < cell[axis] || newQEFPoint[axis] > cell[axis] + 1)
-                            newQEFPoint = pointCOM;
+                        AtA += normals[pointIndex] * normals[pointIndex].transpose();
+                        rhs += normals[pointIndex] * normals[pointIndex].dot(points[pointIndex] - averagePoint);
                     }
 
-                    localDCPoints.emplace_back(cell, newQEFPoint);
+                    Eigen::SelfAdjointEigenSolver<Matrix3x3d> eigenSolver(AtA);
+                    const Vec3d& eigenvalues = eigenSolver.eigenvalues();
+
+                    // Clamp eigenvalues
+                    double tolerance = 0.01 * eigenvalues.cwiseAbs().maxCoeff();
+
+                    Vec3d invEigenvalues;
+                    int clamped = 0;
+                    for (int index : {0, 1, 2})
+                    {
+                        if (std::fabs(eigenvalues[index] < tolerance))
+                        {
+                            invEigenvalues[index] = 0;
+                            ++clamped;
+                        }
+                        else
+                        {
+                            invEigenvalues[index] = 1. / eigenvalues[index];
+                        }
+                    }
+
+                    Vec3d qefPoint;
+                    if (clamped < 3)
+                    {
+                        qefPoint = averagePoint + eigenSolver.eigenvectors() * invEigenvalues.asDiagonal() * eigenSolver.eigenvectors().transpose() * rhs;
+                    }
+                    else
+                    {
+                        qefPoint = averagePoint;
+                    }
+
+                    // Clamp to cell
+                    if (qefPoint[0] < cell[0] || qefPoint[0] > cell[0] + 1 ||
+                        qefPoint[1] < cell[1] || qefPoint[1] > cell[1] + 1 ||
+                        qefPoint[2] < cell[2] || qefPoint[2] > cell[2] + 1)
+                    {
+                        AlignedBox3d cellBbox(cell.cast<double>());
+                        cellBbox.extend((cell + Vec3i::Ones()).cast<double>());
+                        Vec3d rayDirection = averagePoint - qefPoint;
+                        double alpha = computeRayBBoxIntersection(cellBbox, qefPoint, rayDirection);
+
+                        if (alpha <= 1)
+                        {
+                            qefPoint += alpha * rayDirection;
+                        }
+                        else
+                        {
+                            qefPoint = averagePoint;
+                        }
+                    }
+
+                    localDCPoints.emplace_back(cell, qefPoint);
                 }
             }
         });

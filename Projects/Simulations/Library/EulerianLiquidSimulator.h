@@ -82,6 +82,8 @@ public:
     void drawSolidSurface(Renderer& renderer) const;
     void drawSolidVelocity(Renderer& renderer, Axis planeAxis, double planePosition, double length) const;
 
+    void writeLiquidSurface(const std::string& filename) const;
+
 private:
     // Simulation containers
     VectorGrid<double> myLiquidVelocity, mySolidVelocity;

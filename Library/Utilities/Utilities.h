@@ -74,11 +74,17 @@ using Vec3i = Eigen::Matrix<int, 3, 1>;
 template<typename T>
 using Vec3t = Eigen::Matrix<T, 3, 1>;
 
+using Vec4i = Eigen::Matrix<int, 4, 1>;
+
 using VecVec3d = std::vector<Vec3d, Eigen::aligned_allocator<Vec3d>>;
 using VecVec3i = std::vector<Vec3i, Eigen::aligned_allocator<Vec3i>>;
 
 template<typename T, int N>
 using VecXt = Eigen::Matrix<T, N, 1>;
+
+using Matrix2x2d = Eigen::Matrix<double, 2, 2>;
+
+using Matrix3x3d = Eigen::Matrix<double, 3, 3>;
 
 using AlignedBox3d = Eigen::AlignedBox<double, 3>;
 using AlignedBox3i = Eigen::AlignedBox<int, 3>;
@@ -126,7 +132,7 @@ bool operator!=(const VecXt<T, N>& v0, const VecXt<T, N>& v1)
 }
 
 template<typename RealType>
-bool isNearlyEqual(const RealType a, const RealType b, const RealType tolerance = 1e-5, const bool useRelative = true)
+bool isNearlyEqual(const RealType a, const RealType b, const double tolerance = 1e-5, const bool useRelative = true)
 {
 	if (a == b)
 		return true;
@@ -140,13 +146,32 @@ bool isNearlyEqual(const RealType a, const RealType b, const RealType tolerance 
 		avgMag = (std::fabs(a) + std::fabs(b)) / RealType(2);
 	}
 
-	return absDiff < tolerance * avgMag;
+	return absDiff < RealType(tolerance) * avgMag;
+}
+
+template<typename MatType>
+bool isMatrixNearlyEqual(const MatType& a, const MatType& b, const double tolerance = 1e-5, const bool useRelative = true)
+{
+    assert(a.rows() == b.rows());
+    assert(a.cols() == b.cols());
+    for (int row = 0; row != a.rows(); ++row)
+    {
+        for (int col = 0; col != a.cols(); ++col)
+        {
+            if (!isNearlyEqual(a(row, col), b(row, col), tolerance, useRelative))
+            {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
 
 // Transforms even the sequence 0,1,2,3,... into reasonably good random numbers
 // Challenge: improve on this in speed and "randomness"!
 // This seems to pass several statistical tests, and is a bijective map (of 32-bit unsigneds)
-inline unsigned randhash(unsigned seed)
+FORCE_INLINE unsigned randhash(unsigned seed)
 {
     unsigned i = (seed ^ 0xA3C59AC3u) * 2654435769u;
     i ^= (i >> 16);
@@ -157,7 +182,7 @@ inline unsigned randhash(unsigned seed)
 }
 
 // the inverse of randhash
-inline unsigned unhash(unsigned h)
+FORCE_INLINE unsigned unhash(unsigned h)
 {
     h *= 340573321u;
     h ^= (h >> 16);
@@ -169,14 +194,14 @@ inline unsigned unhash(unsigned h)
 }
 
 // returns repeatable stateless pseudo-random number in [0,1]
-inline double randhashd(unsigned seed) { return randhash(seed) / double(std::numeric_limits<unsigned>::max()); }
+FORCE_INLINE double randhashd(unsigned seed) { return randhash(seed) / double(std::numeric_limits<unsigned>::max()); }
 
-inline float randhashf(unsigned seed) { return randhash(seed) / float(std::numeric_limits<unsigned>::max()); }
+FORCE_INLINE float randhashf(unsigned seed) { return randhash(seed) / float(std::numeric_limits<unsigned>::max()); }
 
 // returns repeatable stateless pseudo-random number in [a,b]
-inline double randhashd(unsigned seed, double a, double b) { return (b - a) * randhash(seed) / double(std::numeric_limits<unsigned>::max()) + a; }
+FORCE_INLINE double randhashd(unsigned seed, double a, double b) { return (b - a) * randhash(seed) / double(std::numeric_limits<unsigned>::max()) + a; }
 
-inline float randhashf(unsigned seed, float a, float b) { return (b - a) * randhash(seed) / float(std::numeric_limits<unsigned>::max()) + a; }
+FORCE_INLINE float randhashf(unsigned seed, float a, float b) { return (b - a) * randhash(seed) / float(std::numeric_limits<unsigned>::max()) + a; }
 
 template <typename S, typename T>
 S lerp(const S& value0, const S& value1, const T& f)
@@ -223,6 +248,13 @@ S cubicInterp(const S& value_1, const S& value0, const S& value1, const S& value
     return T(0.5) * ((-cubefx + T(2.0) * sqrfx - fx) * value_1 + (T(3.0) * cubefx - T(5.0) * sqrfx + T(2.0)) * value0 +
                      (-T(3.0) * cubefx + T(4.0) * sqrfx + fx) * value1 + (cubefx - sqrfx) * value2);
 };
+
+Vec3d computeBarycenters(const Vec3d& vb, const Vec3d& v0, const Vec3d& v1, const Vec3d& v2);
+
+// Helper function to project a point to a triangle in 3-D
+Vec3d pointToTriangleProjection(const Vec3d& vp, const Vec3d& v0, const Vec3d& v1, const Vec3d& v2);
+
+double computeRayBBoxIntersection(const AlignedBox3d& bbox, const Vec3d& rayOrigin, const Vec3d& rayDirection);
 
 }
 

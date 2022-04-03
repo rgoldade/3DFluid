@@ -43,6 +43,12 @@ void EulerianLiquidSimulator::drawSolidVelocity(Renderer& renderer, Axis planeAx
                                            mySolidVelocity.dx() * length);
 }
 
+void EulerianLiquidSimulator::writeLiquidSurface(const std::string& filename) const
+{
+    TriMesh tempLiquidSurface = myLiquidSurface.buildMesh();
+    tempLiquidSurface.writeAsOBJ(filename);
+}
+
 void EulerianLiquidSimulator::setSolidSurface(const LevelSet& solidSurface)
 {
     assert(solidSurface.isBackgroundNegative());
@@ -290,11 +296,21 @@ void EulerianLiquidSimulator::runTimestep(double dt)
     simTimer.reset();
 
     advectOldPressure(dt);
+
+    std::cout << "  Advect pressure: " << simTimer.stop() << "s" << std::endl;
+    simTimer.reset();
+
     advectLiquidSurface(dt, IntegrationOrder::RK3);
+
+    std::cout << "  Advect liquid surface: " << simTimer.stop() << "s" << std::endl;
+    simTimer.reset();
 
     if (myDoSolveViscosity) advectViscosity(dt, IntegrationOrder::FORWARDEULER);
 
+    std::cout << "  Advect viscosity: " << simTimer.stop() << "s" << std::endl;
+    simTimer.reset();
+
     advectLiquidVelocity(dt, IntegrationOrder::RK3);
 
-    std::cout << "  Advect simulation: " << simTimer.stop() << "s" << std::endl;
+    std::cout << "  Advect velocity: " << simTimer.stop() << "s" << std::endl;
 }

@@ -2,9 +2,12 @@
 
 #include <fstream>
 #include <iostream>
+#include <set>
 
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
+#include "tbb/parallel_reduce.h"
+#include "tbb/parallel_sort.h"
 
 namespace FluidSim3D
 {
@@ -102,18 +105,26 @@ bool TriMesh::isTriangleDegenerate(int triIndex) const
 
 AlignedBox3d TriMesh::boundingBox() const
 {
-    AlignedBox3d bbox;
-
-    for (const Vec3d& vertex : myVertices)
+    AlignedBox3d bbox = tbb::parallel_reduce(tbb::blocked_range<int>(0, int(myVertices.size()), tbbLightGrainSize), AlignedBox3d(myVertices[0]), [&](const tbb::blocked_range<int>& range, AlignedBox3d bbox)
     {
-        bbox.extend(vertex);
-    }
+        for (int vertIndex = range.begin(); vertIndex != range.end(); ++vertIndex)
+        {
+            bbox.extend(myVertices[vertIndex]);
+        }
+
+        return bbox;
+    },
+    [](AlignedBox3d bbox0, const AlignedBox3d& bbox1)
+    {
+        bbox0.extend(bbox1);
+        return bbox0;
+    });
 
     return bbox;
 }
 
 void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3d triFaceColour, bool doRenderTriNormals, Vec3d normalColour, bool doRenderVertices, Vec3d vertexColour,
-                       bool doRenderTriEdges, Vec3d edgeColour)
+                       bool doRenderTriEdges, Vec3d edgeColour, bool doRenderVertexNormals, Vec3d vertexNormalColours)
 {    
     // Pre-compute area-weighted triangle normals
     // and set triangle faces
@@ -200,15 +211,30 @@ void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3d triFaceC
 
         renderer.addLines(startPoints, endPoints, edgeColour);
     }
+
+    if (doRenderVertexNormals)
+    {
+        VecVec3d vertexNormals = computeVertexNormals();
+
+        VecVec3d startPoints = myVertices;
+        VecVec3d endPoints = myVertices;
+
+        tbb::parallel_for(tbb::blocked_range<int>(0, int(myVertices.size())), [&](const tbb::blocked_range<int>& range)
+        {
+            for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
+            {
+                endPoints[vertexIndex] += .1 * vertexNormals[vertexIndex];
+            }
+        });
+
+        renderer.addLines(startPoints, endPoints, vertexNormalColours);
+    }
 }
 
-void TriMesh::saveAsOBJ(const std::string &filename) const
+void TriMesh::writeAsOBJ(const std::string &filename) const
 {
-    std::string localFileName = filename;
-    localFileName += std::string(".obj");
-
     std::ofstream objFile;
-    objFile.open(localFileName);
+    objFile.open(filename);
 
     for (const Vec3d& vertex : myVertices)
     {
@@ -274,6 +300,109 @@ bool TriMesh::unitTestMesh() const
     }
 
     return true;
+}
+
+VecVec3d TriMesh::computeVertexNormals() const
+{
+    std::vector<std::pair<int, Vec3d>> localVertexNormals(3 * myTriangles.size());
+
+    tbb::parallel_for(tbb::blocked_range<int>(0, int(myTriangles.size())), [&](const tbb::blocked_range<int>& range)
+    {
+        for (int triIndex = range.begin(); triIndex != range.end(); ++triIndex)
+        {
+            const Vec3i& tri = myTriangles[triIndex];
+
+            for (int localVertexIndex : {0, 1, 2})
+            {
+                Vec3d edge0 = myVertices[tri[(localVertexIndex + 1) % 3]] - myVertices[tri[localVertexIndex]];
+                Vec3d edge1 = myVertices[tri[(localVertexIndex + 2) % 3]] - myVertices[tri[localVertexIndex]];
+
+                double squareArea = edge0.squaredNorm() * edge1.squaredNorm();
+
+                Vec3d localNormal;
+                if (squareArea > 0)
+                {
+                    localNormal = edge0.cross(edge1) / squareArea;
+                }
+                else
+                {
+                    localNormal = Vec3d::Zero();
+                }
+
+                localVertexNormals[3 * triIndex + localVertexIndex] = std::make_pair(tri[localVertexIndex], localNormal);
+            }
+        }
+    });
+
+    //tbb::parallel_for(tbb::blocked_range<int>(0, int(myTriangles.size())), [&](const tbb::blocked_range<int>& range)
+    //{
+    //    for (int triIndex = range.begin(); triIndex != range.end(); ++triIndex)
+    //    {
+    //        const Vec3i& tri = myTriangles[triIndex];
+
+    //        Vec3d triNormal = normal(triIndex);
+
+    //        for (int localVertexIndex : {0, 1, 2})
+    //        {
+    //            double a = (myVertices[tri[(localVertexIndex + 1) % 3]] - myVertices[tri[localVertexIndex]]).norm();
+    //            double b = (myVertices[tri[(localVertexIndex + 2) % 3]] - myVertices[tri[localVertexIndex]]).norm();
+    //            double c = (myVertices[tri[(localVertexIndex + 2) % 3]] - myVertices[tri[(localVertexIndex + 1) % 3]]).norm();
+
+    //            double angle = std::acos((a * a + b * b - c * c) / (2. * a * b));
+    //            localVertexNormals[3 * triIndex + localVertexIndex] = std::make_pair(tri[localVertexIndex], angle * triNormal);
+    //        }
+    //    }
+    //});
+
+    tbb::parallel_sort(localVertexNormals.begin(), localVertexNormals.end(), [&](const std::pair<int, Vec3d>& pair0, const std::pair<int, Vec3d>& pair1)
+    {
+        return pair0.first < pair1.first;
+    });
+
+    VecVec3d vertexNormals(myVertices.size(), Vec3d::Zero());
+
+    //tbb::parallel_for(tbb::blocked_range<int>(0, int(localVertexNormals.size())), [&](const tbb::blocked_range<int>& range)
+    //{
+    //    int startIndex = range.begin();
+
+    //    if (startIndex > 0 && localVertexNormals[startIndex - 1].first == localVertexNormals[startIndex].first)
+    //    {
+    //        while (startIndex < range.end() && localVertexNormals[startIndex - 1].first == localVertexNormals[startIndex].first)
+    //        {
+    //            ++startIndex;
+    //        }
+    //    }
+
+    //    int normIndex = startIndex;
+    //    while (normIndex < range.end())
+    //    {
+    //        int oldVertexIndex = localVertexNormals[normIndex].first;
+    //        int triCount = 0;
+    //        while (normIndex != range.end() && oldVertexIndex == localVertexNormals[normIndex].first)
+    //        {
+    //            vertexNormals[oldVertexIndex] += localVertexNormals[normIndex].second;
+    //            ++normIndex;
+    //            triCount++;
+    //        }
+
+
+    //        vertexNormals[oldVertexIndex] /= double(triCount);
+    //        //vertexNormals[oldVertexIndex].normalize();
+    //    }
+    //});
+
+
+    for (int index = 0; index < localVertexNormals.size(); ++index)
+    {
+        vertexNormals[localVertexNormals[index].first] += localVertexNormals[index].second;
+    }
+
+    for (Vec3d& vertNorm : vertexNormals)
+    {
+        vertNorm.normalize();
+    }
+
+    return vertexNormals;
 }
 
 //

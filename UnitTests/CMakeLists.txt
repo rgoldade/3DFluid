@@ -16,4 +16,4 @@ macro(package_add_test TESTNAME)
     set_target_properties(${TESTNAME} PROPERTIES FOLDER UnitTests)
 endmacro()
 
-package_add_test(3DFluidTests AnalyticalPoissonSolverTests.cpp AnalyticalViscositySolverTests.cpp ComputeWeightsTests.cpp GridUtilitiesTests.cpp LevelSetTests.cpp PredicatesTests.cpp ScalarGridTests.cpp TriMeshTests.cpp UniformGridTests.cpp VectorGridTests.cpp)
+package_add_test(3DFluidTests AnalyticalPoissonSolverTests.cpp AnalyticalViscositySolverTests.cpp ClosestPointComputerTests.cpp ComputeWeightsTests.cpp GeometricMultigridTests.cpp GridUtilitiesTests.cpp LevelSetTests.cpp PredicatesTests.cpp ScalarGridTests.cpp SparseUniformGridTests.cpp TriMeshTests.cpp UniformGridTests.cpp UtilitiesTests.cpp VectorGridTests.cpp)

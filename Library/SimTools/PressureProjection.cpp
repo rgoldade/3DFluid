@@ -190,10 +190,10 @@ void PressureProjection::project(VectorGrid<double>& velocity)
     std::vector<Eigen::Triplet<SolveReal>> sparseMatrixElements;
     mergeLocalThreadVectors(sparseMatrixElements, parallelSparseMatrixElements);
 
-    Eigen::SparseMatrix<SolveReal> sparseMatrix(liquidCellCount, liquidCellCount);
+    Eigen::SparseMatrix<SolveReal, Eigen::RowMajor> sparseMatrix(liquidCellCount, liquidCellCount);
     sparseMatrix.setFromTriplets(sparseMatrixElements.begin(), sparseMatrixElements.end());
 
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<SolveReal>, Eigen::Upper | Eigen::Lower> solver;
+    Eigen::ConjugateGradient<Eigen::SparseMatrix<SolveReal, Eigen::RowMajor>, Eigen::Upper | Eigen::Lower> solver;
     solver.compute(sparseMatrix);
 
     if (solver.info() != Eigen::Success)
@@ -202,7 +202,12 @@ void PressureProjection::project(VectorGrid<double>& velocity)
         return;
     }
 
-    solver.setTolerance(1E-3);
+    solver.setTolerance(1E-6);
+
+    if ((rhsVector - sparseMatrix * initialGuessVector).squaredNorm() > rhsVector.squaredNorm())
+    {
+        initialGuessVector.setZero();
+    }
 
     Vector solutionVector = solver.solveWithGuess(rhsVector, initialGuessVector);
 
@@ -300,6 +305,10 @@ void PressureProjection::project(VectorGrid<double>& velocity)
                     }
 
                     velocity(face, axis) -= gradient;
+                }
+                else
+                {
+                    velocity(face, axis) = 0;
                 }
             }
         });

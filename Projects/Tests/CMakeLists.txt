@@ -1,6 +1,7 @@
 set(TEST_FOLDER TestProjects)
 
 add_subdirectory(TestAnalyticalPoissonSolver)
+add_subdirectory(TestEnrightFlow)
 add_subdirectory(TestInitialGeometry)
 add_subdirectory(TestLevelSet)
 add_subdirectory(TestScalarGrid)

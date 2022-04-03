@@ -1,6 +1,9 @@
 #ifndef FLUIDSIM3D_SCALAR_GRID_H
 #define FLUIDSIM3D_SCALAR_GRID_H
 
+#include "tbb/blocked_range.h"
+#include "tbb/parallel_for.h"
+
 #include "GridUtilities.h"
 #include "Renderer.h"
 #include "Transform.h"
@@ -563,9 +566,9 @@ void ScalarGrid<T>::drawSupersampledValuesVolume(Renderer& renderer, double samp
                                                  double sampleSize) const
 {
     Vec3d start = Vec3d::Zero();
-    Vec3d end = this->mySize.cast<double>() - Vec3d::Ones();
+    Vec3d end = this->mySize.template cast<double>() - Vec3d::Ones();
 
-    drawSupersampledValues(renderer, start, end, Vec3d::Consant(sampleRadius), samples, sampleSize);
+    drawSupersampledValues(renderer, start, end, Vec3d::Constant(sampleRadius), samples, sampleSize);
 }
 
 // Warning: there is no protection here for ASSERT border types
@@ -576,7 +579,7 @@ void ScalarGrid<T>::drawSupersampledValuesPlane(Renderer& renderer, Axis planeAx
     position = std::clamp(position, double(0), double(1));
 
     Vec3d start = Vec3d::Zero();
-    Vec3d end = (this->mySize - Vec3i::Ones()).cast<double>();
+    Vec3d end = (this->mySize - Vec3i::Ones()).template cast<double>();
     Vec3d localRadius = Vec3d::Constant(sampleRadius);
 
     if (planeAxis == Axis::XAXIS)

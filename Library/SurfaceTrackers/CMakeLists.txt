@@ -5,8 +5,9 @@ add_library(SurfaceTrackers
 				TriMesh.cpp)
 
 target_link_libraries(SurfaceTrackers
-						PRIVATE
+						PUBLIC
 						RenderTools
+						SimTools
 						Utilities)
 
 target_include_directories(SurfaceTrackers PUBLIC

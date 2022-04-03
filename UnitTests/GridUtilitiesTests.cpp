@@ -107,6 +107,27 @@ TEST(GRID_UTILITIES_TESTS, FACE_TO_EDGE)
 	}
 }
 
+TEST(GRID_UTILITIES_TESTS, FACE_TO_EDGE_CCW)
+{
+	int testSize = 1000;
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		Vec3i face = (10000. * Vec3d::Random()).cast<int>();
+
+		for (int faceAxis : {0, 1, 2})
+            for (int edgeIndex : {0, 1, 2, 3})
+            {
+				Vec4i adjacentEdge = faceToEdgeCCW(face, faceAxis, edgeIndex);
+
+				int direction = (edgeIndex == 0 || edgeIndex == 3) ? 1 : 0;
+				
+				Vec3i returnFace = edgeToFace(adjacentEdge.segment<3>(0), adjacentEdge[3], faceAxis, direction);
+
+				EXPECT_TRUE(face == returnFace);
+            }
+	}
+}
+
 TEST(GRID_UTILITIES_TESTS, FACE_TO_NODE)
 {
 	int testSize = 1000;
@@ -137,7 +158,7 @@ TEST(GRID_UTILITIES_TESTS, FACE_TO_NODE_CCW)
 		for (int faceAxis : {0, 1, 2})
 			for (int nodeIndex : {0, 1, 2, 3})
 			{
-                Vec3i adjacentNode = faceToNode(face, faceAxis, nodeIndex);
+                Vec3i adjacentNode = faceToNodeCCW(face, faceAxis, nodeIndex);
 
                 int returnFaceCount = 0;
 				for (int faceIndex : {0, 1, 2, 3})
@@ -150,6 +171,32 @@ TEST(GRID_UTILITIES_TESTS, FACE_TO_NODE_CCW)
 			}
 	}
 }
+
+TEST(GRID_UTILITIES_TESTS, FACE_NODE_AND_EDGE_CCW)
+{
+	int testSize = 1000;
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		Vec3i face = (10000. * Vec3d::Random()).cast<int>();
+
+		for (int faceAxis : {0, 1, 2})
+			for (int nodeIndex : {0, 1, 2, 3})
+			{
+                Vec3i adjacentNode = faceToNodeCCW(face, faceAxis, nodeIndex);
+
+				Vec4i adjacentEdge = faceToEdgeCCW(face, faceAxis, nodeIndex);
+
+				int direction = (nodeIndex > 1) ? 1 : 0;
+
+				Vec3i edgeNode = edgeToNode(adjacentEdge.segment<3>(0), adjacentEdge[3], direction);
+
+				EXPECT_EQ(adjacentNode[0], edgeNode[0]);
+				EXPECT_EQ(adjacentNode[1], edgeNode[1]);
+				EXPECT_EQ(adjacentNode[2], edgeNode[2]);
+			}
+	}
+}
+
 
 TEST(GRID_UTILITIES_TESTS, EDGE_TO_CELL_CCW)
 {

@@ -23,20 +23,17 @@ static bool isDisplayDirty = true;
 
 static bool drawSolidBoundaries = true;
 static bool drawLiquidVelocities = true;
+static bool writeLiquidSurface = true;
 
 static double planePosition = .5;
 static double planeDX = .05;
 static Axis planeAxis = Axis::ZAXIS;
 
-static LevelSet seedSurface;
-
 static Transform xform;
 
-static double seedTime = 0;
-static constexpr double seedPeriod = 1;
-static constexpr double dt = 1. / 30.;
+static constexpr double dt = 1. / 90.;
 
-static constexpr double cfl = 5.;
+static constexpr double cfl = 1.;
 
 void display()
 {
@@ -64,19 +61,12 @@ void display()
 
             if (localDt <= 0) break;
 
-            if (seedTime > seedPeriod)
-            {
-                simulator->unionLiquidSurface(seedSurface);
-                seedTime = 0;
-            }
-
             // Add gravity
             simulator->addForce(localDt, Vec3d(0, -9.8, 0));
 
             // Projection set unfortunately includes viscosity at the moment
             simulator->runTimestep(localDt);
 
-            seedTime += localDt;
             frameTime += localDt;
         }
         std::cout << "\n\nEnd of frame: " << frameCount << "\n" << std::endl;
@@ -94,6 +84,12 @@ void display()
         if (drawSolidBoundaries) simulator->drawSolidSurface(*renderer);
 
         if (drawLiquidVelocities) simulator->drawLiquidVelocity(*renderer, planeAxis, planePosition, 1);
+
+        if (writeLiquidSurface)
+        {
+            std::string surfaceName = std::string("liquid_surface_") + std::to_string(frameCount) + std::string(".obj");
+            simulator->writeLiquidSurface(surfaceName);
+        }
 
         isDisplayDirty = false;
 
@@ -117,6 +113,8 @@ void keyboard(unsigned char key, int x, int y)
         runSimulation = !runSimulation;
     else if (key == 'n')
         runSingleTimestep = true;
+    else if (key == 'p')
+        writeLiquidSurface = !writeLiquidSurface;
     else if (key == 's')
         drawSolidBoundaries = !drawSolidBoundaries;
     else if (key == 'v')
@@ -127,7 +125,7 @@ void keyboard(unsigned char key, int x, int y)
 
 int main(int argc, char** argv)
 {
-    double dx = .1;
+    double dx = .05;
     double solidSphereRadius = 2;
     Vec3d topRightCorner = Vec3d::Constant(solidSphereRadius + 15 * dx);
     Vec3d bottomLeftCorner = Vec3d::Constant(-solidSphereRadius - 15 * dx);
@@ -148,14 +146,6 @@ int main(int argc, char** argv)
 
     LevelSet liquidSurface(xform, gridSize, 5);
     liquidSurface.initFromMesh(liquidMesh, false);
-
-    // Build seed liquid geometry
-
-    Vec3d seedCenter = center + Vec3d(.6, .6, 0);
-    TriMesh seedMesh = makeCubeMesh(seedCenter, Vec3d::Constant(.5));
-
-    seedSurface = LevelSet(xform, gridSize, 5);
-    seedSurface.initFromMesh(seedMesh, false);
 
     // Build solid boundary
 

@@ -22,9 +22,15 @@ namespace FluidSim3D
 
 template <typename Field, typename VelocityField>
 void advectField(double dt, Field& destinationField, const Field& sourceField, const VelocityField& velocity,
-                 IntegrationOrder order)
+                 IntegrationOrder order, const UniformGrid<VisitedCellLabels>* activeCells = nullptr)
 {
     assert(&destinationField != &sourceField);
+    assert(destinationField.isGridMatched(sourceField));
+
+    if (activeCells != nullptr)
+    {
+        assert(destinationField.size() == activeCells->size());
+    }
 
     tbb::parallel_for(tbb::blocked_range<int>(0, sourceField.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
     {
@@ -32,10 +38,13 @@ void advectField(double dt, Field& destinationField, const Field& sourceField, c
         {
             Vec3i cell = sourceField.unflatten(cellIndex);
 
-            Vec3d worldPoint = sourceField.indexToWorld(cell.cast<double>());
-            worldPoint = Integrator(-dt, worldPoint, velocity, order);
+            if (activeCells == nullptr || (*activeCells)(cell) == VisitedCellLabels::FINISHED_CELL)
+            {
+                Vec3d worldPoint = sourceField.indexToWorld(cell.cast<double>());
+                worldPoint = Integrator(-dt, worldPoint, velocity, order);
 
-            destinationField(cell) = sourceField.triLerp(worldPoint);
+                destinationField(cell) = sourceField.triLerp(worldPoint);
+            }
         }
     });
 }
