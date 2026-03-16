@@ -103,7 +103,7 @@ bool LevelSet::isGridMatched(const ScalarGrid<double>& grid) const
     return true;
 }
 
-void LevelSet::unionSurface(const LevelSet& unionPhi)
+void LevelSet::unionSurface(const LevelSet& unionPhi, bool doReinit)
 {
     assert(isGridMatched(unionPhi));
 
@@ -115,6 +115,8 @@ void LevelSet::unionSurface(const LevelSet& unionPhi)
             myPhiGrid(cell) = std::min(myPhiGrid(cell), unionPhi(cell));
         }
     });
+
+    if (doReinit) reinit();
 }
 
 bool LevelSet::isBackgroundNegative() const

@@ -42,7 +42,7 @@ public:
     bool isGridMatched(const LevelSet& grid) const;
     bool isGridMatched(const ScalarGrid<double>& grid) const;
 
-    void unionSurface(const LevelSet& unionPhi);
+    void unionSurface(const LevelSet& unionPhi, bool doReinit = true);
 
     bool isBackgroundNegative() const;
     void setBackgroundNegative();
