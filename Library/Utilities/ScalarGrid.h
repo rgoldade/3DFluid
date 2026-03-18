@@ -5,10 +5,12 @@
 #include "tbb/parallel_for.h"
 
 #include "GridUtilities.h"
-#include "Renderer.h"
 #include "Transform.h"
 #include "UniformGrid.h"
 #include "Utilities.h"
+
+#include "polyscope/curve_network.h"
+#include "polyscope/point_cloud.h"
 
 ///////////////////////////////////
 //
@@ -167,25 +169,24 @@ public:
     const Vec3d& offset() const { return myXform.offset(); }
     const Transform& xform() const { return myXform; }
 
-    // Render methods
-    void drawGrid(Renderer& renderer) const;
-    void drawGridCell(Renderer& renderer, const Vec3i& cell, const Vec3d& colour = Vec3d::Zero()) const;
-    void drawGridPlane(Renderer& renderer, Axis planeAxis, double position) const;
+    // Polyscope render methods
+    void drawGrid(const std::string& label) const;
+    void drawGridCell(const std::string& label, const Vec3i& cell) const;
+    void drawGridCellList(const std::string& label, const VecVec3i& cells) const;
+    void drawGridPlane(const std::string& label, Axis planeAxis, double position) const;
 
-    void drawSamplePoints(Renderer& renderer, const Vec3d& colour = Vec3d(1, 0, 0), double sampleSize = 5.) const;
-    void drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, const Vec3d& colour = Vec3d(1, 0, 0),
-                             double sampleSize = 5.) const;
+    void drawSamplePoints(const std::string& label, const Vec3d& colour = Vec3d(1, 0, 0), double sampleSize = .001) const;
+    void drawCellSamplePoint(const std::string& label, const Vec3i& cell, const Vec3d& colour = Vec3d(1, 0, 0),
+                             double sampleSize = .001) const;
 
-    void drawSupersampledValues(Renderer& renderer, const Vec3d& start, const Vec3d& end, const Vec3d& sampleRadius,
-                                int samples, double sampleSize = 5) const;
-    void drawSupersampledValuesVolume(Renderer& renderer, double sampleRadius = .5, int samples = 5,
-                                      double sampleSize = 1) const;
+    void drawSupersampledValues(const std::string& label, const Vec3d& start, const Vec3d& end, const Vec3d& sampleRadius,
+                                int samples, double sampleSize = .001) const;
+    void drawSupersampledValuesVolume(const std::string& label, double sampleRadius = .5, int samples = 5,
+                                      double sampleSize = .001) const;
 
-    // Display a supersampled slice of the grid. The plane will have a normal in the planeAxis direction.
-    // The position is from [0,1] where 0 is at the grid origin and 1 is at the origin + size * dx.
-    void drawSupersampledValuesPlane(Renderer& renderer, Axis planeAxis, double position, double sampleRadius = .5,
-                                     int samples = 5, double sampleSize = 1) const;
-    void drawSampleGradientsPlane(Renderer& renderer, Axis planeAxis, double position, const Vec3d& colour = Vec3d::Constant(.5),
+    void drawSupersampledValuesPlane(const std::string& label, Axis planeAxis, double position, double sampleRadius = .5,
+                                     int samples = 5, double sampleSize = .001) const;
+    void drawSampleGradientsPlane(const std::string& label, Axis planeAxis, double position, const Vec3d& colour = Vec3d::Constant(.5),
                                   double length = .25) const;
 
 private:
@@ -336,10 +337,9 @@ Vec3t<T> ScalarGrid<T>::triLerpGradientLocal(const Vec3d& samplePoint) const
 }
 
 template <typename T>
-void ScalarGrid<T>::drawGrid(Renderer& renderer) const
+void ScalarGrid<T>::drawGrid(const std::string& label) const
 {
-    VecVec3d startPoints;
-    VecVec3d endPoints;
+    VecVec3d segments;
 
     for (int axis : {0, 1, 2})
     {
@@ -350,51 +350,57 @@ void ScalarGrid<T>::drawGrid(Renderer& renderer) const
         forEachVoxelRange(start, end, [&](const Vec3i& cell)
         {
             Vec3d gridStart = cell.cast<double>();
-
-            Vec3d startPoint = indexToWorld(gridStart - myCellOffset);
-            startPoints.push_back(startPoint);
+            segments.push_back(indexToWorld(gridStart - myCellOffset));
 
             Vec3d gridEnd = cell.cast<double>();
             gridEnd[axis] = myGridSize[axis];
-
-            Vec3d endPoint = indexToWorld(gridEnd - myCellOffset);
-            endPoints.push_back(endPoint);
+            segments.push_back(indexToWorld(gridEnd - myCellOffset));
         });
     }
 
-    renderer.addLines(startPoints, endPoints, Vec3d::Zero());
+    auto* cn = polyscope::registerCurveNetworkSegments(label + " grid", segments);
+    cn->setColor(glm::vec3(0.f, 0.f, 0.f));
+    cn->setRadius(.0005);
 }
 
 template <typename T>
-void ScalarGrid<T>::drawGridCell(Renderer& renderer, const Vec3i& cell, const Vec3d& colour) const
+void ScalarGrid<T>::drawGridCell(const std::string& label, const Vec3i& cell) const
 {
-    VecVec3d startPoints;
-    VecVec3d endPoints;
+    drawGridCellList(label, {cell});
+}
 
-    const Vec3d edgeToNodeOffset[12][2] = {
-        {Vec3d(0, 0, 0), Vec3d(1, 0, 0)},  // x-axis edges
+template <typename T>
+void ScalarGrid<T>::drawGridCellList(const std::string& label, const VecVec3i& cells) const
+{
+    static const Vec3d edgeToNodeOffset[12][2] = {
+        {Vec3d(0, 0, 0), Vec3d(1, 0, 0)},
         {Vec3d(0, 0, 1), Vec3d(1, 0, 1)}, {Vec3d(0, 1, 0), Vec3d(1, 1, 0)}, {Vec3d(0, 1, 1), Vec3d(1, 1, 1)},
-
-        {Vec3d(0, 0, 0), Vec3d(0, 1, 0)},  // y-axis edges
+        {Vec3d(0, 0, 0), Vec3d(0, 1, 0)},
         {Vec3d(1, 0, 0), Vec3d(1, 1, 0)}, {Vec3d(0, 0, 1), Vec3d(0, 1, 1)}, {Vec3d(1, 0, 1), Vec3d(1, 1, 1)},
-
-        {Vec3d(0, 0, 0), Vec3d(0, 0, 1)},  // z-axis edges
+        {Vec3d(0, 0, 0), Vec3d(0, 0, 1)},
         {Vec3d(1, 0, 0), Vec3d(1, 0, 1)}, {Vec3d(0, 1, 0), Vec3d(0, 1, 1)}, {Vec3d(1, 1, 0), Vec3d(1, 1, 1)}};
 
-    for (int edgeIndex = 0; edgeIndex < 12; ++edgeIndex)
-    {
-        Vec3d startNode = indexToWorld(cell.cast<double>() - myCellOffset + edgeToNodeOffset[edgeIndex][0]);
-        Vec3d endNode = indexToWorld(cell.cast<double>() - myCellOffset + edgeToNodeOffset[edgeIndex][1]);
+    VecVec3d segments;
 
-        startPoints.push_back(startNode);
-        endPoints.push_back(endNode);
+    for (const Vec3i& cell : cells)
+    {
+        for (int edgeIndex = 0; edgeIndex < 12; ++edgeIndex)
+        {
+            segments.push_back(indexToWorld(cell.cast<double>() - myCellOffset + edgeToNodeOffset[edgeIndex][0]));
+            segments.push_back(indexToWorld(cell.cast<double>() - myCellOffset + edgeToNodeOffset[edgeIndex][1]));
+        }
     }
 
-    renderer.addLines(startPoints, endPoints, colour);
+    if (!segments.empty())
+    {
+        auto* cn = polyscope::registerCurveNetworkSegments(label, segments);
+        cn->setColor(glm::vec3(0.f, 0.f, 0.f));
+        cn->setRadius(.00025);
+    }
 }
 
 template <typename T>
-void ScalarGrid<T>::drawGridPlane(Renderer& renderer, Axis planeAxis, double position) const
+void ScalarGrid<T>::drawGridPlane(const std::string& label, Axis planeAxis, double position) const
 {
     position = std::clamp(position, double(0), double(1));
 
@@ -417,11 +423,14 @@ void ScalarGrid<T>::drawGridPlane(Renderer& renderer, Axis planeAxis, double pos
         end[2] = start[2] + 1;
     }
 
-    forEachVoxelRange(start, end, [&](const Vec3i& cell) { drawGridCell(renderer, cell); });
+    VecVec3i cells;
+    forEachVoxelRange(start, end, [&](const Vec3i& cell) { cells.push_back(cell); });
+
+    drawGridCellList(label + " grid plane", cells);
 }
 
 template <typename T>
-void ScalarGrid<T>::drawSamplePoints(Renderer& renderer, const Vec3d& colour, double sampleSize) const
+void ScalarGrid<T>::drawSamplePoints(const std::string& label, const Vec3d& colour, double sampleSize) const
 {
     tbb::enumerable_thread_specific<VecVec3d> parallelSamplePoints;
 
@@ -432,9 +441,7 @@ void ScalarGrid<T>::drawSamplePoints(Renderer& renderer, const Vec3d& colour, do
                           for (int sampleIndex = range.begin(); sampleIndex != range.end(); ++sampleIndex)
                           {
                               Vec3i sampleCoord = this->unflatten(sampleIndex);
-
                               Vec3d worldPoint = indexToWorld(sampleCoord.cast<double>());
-
                               localSamplePoints.push_back(worldPoint);
                           }
                       });
@@ -442,95 +449,60 @@ void ScalarGrid<T>::drawSamplePoints(Renderer& renderer, const Vec3d& colour, do
     VecVec3d samplePoints;
     mergeLocalThreadVectors(samplePoints, parallelSamplePoints);
 
-    renderer.addPoints(samplePoints, colour, sampleSize);
+    auto* pc = polyscope::registerPointCloud(label + " sample points", samplePoints);
+    pc->setPointColor(glm::vec3((float)colour[0], (float)colour[1], (float)colour[2]));
+    pc->setPointRadius(sampleSize);
 }
 
 template <typename T>
-void ScalarGrid<T>::drawCellSamplePoint(Renderer& renderer, const Vec3i& cell, const Vec3d& colour,
+void ScalarGrid<T>::drawCellSamplePoint(const std::string& label, const Vec3i& cell, const Vec3d& colour,
                                         double sampleSize) const
 {
     VecVec3d samplePoints;
-
-    Vec3d indexPoint = cell.cast<double>();
     Vec3d worldPoint;
 
     switch (mySampleType)
     {
         case SampleType::CENTER:
-            worldPoint = indexToWorld(indexPoint);
-            samplePoints.push_back(worldPoint);
-
+            samplePoints.push_back(indexToWorld(cell.cast<double>()));
             break;
-
         case SampleType::XFACE:
-            worldPoint = indexToWorld(cellToFace(cell, 0 /*face axis*/, 0 /*direction*/).cast<double>());
-            samplePoints.push_back(worldPoint);
-
-            worldPoint = indexToWorld(cellToFace(cell, 0 /*face axis*/, 1 /*direction*/).cast<double>());
-            samplePoints.push_back(worldPoint);
-
+            samplePoints.push_back(indexToWorld(cellToFace(cell, 0, 0).cast<double>()));
+            samplePoints.push_back(indexToWorld(cellToFace(cell, 0, 1).cast<double>()));
             break;
-
         case SampleType::YFACE:
-            worldPoint = indexToWorld(cellToFace(cell, 1 /*axis*/, 0 /*direction*/).cast<double>());
-            samplePoints.push_back(worldPoint);
-
-            worldPoint = indexToWorld(cellToFace(cell, 1 /*axis*/, 1 /*direction*/).cast<double>());
-            samplePoints.push_back(worldPoint);
-
+            samplePoints.push_back(indexToWorld(cellToFace(cell, 1, 0).cast<double>()));
+            samplePoints.push_back(indexToWorld(cellToFace(cell, 1, 1).cast<double>()));
             break;
-
         case SampleType::ZFACE:
-            worldPoint = indexToWorld(cellToFace(cell, 2 /*axis*/, 0 /*direction*/).cast<double>());
-            samplePoints.push_back(worldPoint);
-
-            worldPoint = indexToWorld(cellToFace(cell, 2 /*axis*/, 1 /*direction*/).cast<double>());
-            samplePoints.push_back(worldPoint);
-
+            samplePoints.push_back(indexToWorld(cellToFace(cell, 2, 0).cast<double>()));
+            samplePoints.push_back(indexToWorld(cellToFace(cell, 2, 1).cast<double>()));
             break;
-
         case SampleType::XEDGE:
             for (int edgeIndex = 0; edgeIndex < 4; ++edgeIndex)
-            {
-                worldPoint = indexToWorld(cellToEdge(cell, 0 /*edge axis*/, edgeIndex).cast<double>());
-                samplePoints.push_back(worldPoint);
-            }
-
+                samplePoints.push_back(indexToWorld(cellToEdge(cell, 0, edgeIndex).cast<double>()));
             break;
-
         case SampleType::YEDGE:
             for (int edgeIndex = 0; edgeIndex < 4; ++edgeIndex)
-            {
-                worldPoint = indexToWorld(cellToEdge(cell, 1 /*edge axis*/, edgeIndex).cast<double>());
-                samplePoints.push_back(worldPoint);
-            }
-
+                samplePoints.push_back(indexToWorld(cellToEdge(cell, 1, edgeIndex).cast<double>()));
             break;
-
         case SampleType::ZEDGE:
             for (int edgeIndex = 0; edgeIndex < 4; ++edgeIndex)
-            {
-                worldPoint = indexToWorld(cellToEdge(cell, 2 /*edge axis*/, edgeIndex).cast<double>());
-                samplePoints.push_back(worldPoint);
-            }
-
+                samplePoints.push_back(indexToWorld(cellToEdge(cell, 2, edgeIndex).cast<double>()));
             break;
-
         case SampleType::NODE:
             for (int nodeIndex = 0; nodeIndex < 8; ++nodeIndex)
-            {
-                worldPoint = indexToWorld(cellToNode(cell, nodeIndex).cast<double>());
-                samplePoints.push_back(worldPoint);
-            }
-
+                samplePoints.push_back(indexToWorld(cellToNode(cell, nodeIndex).cast<double>()));
             break;
     }
 
-    renderer.addPoints(samplePoints, colour, sampleSize);
+    auto* pc = polyscope::registerPointCloud(label + " cell sample", samplePoints);
+    pc->setPointColor(glm::vec3((float)colour[0], (float)colour[1], (float)colour[2]));
+    pc->setPointRadius(sampleSize);
 }
 
 template <typename T>
-void ScalarGrid<T>::drawSupersampledValues(Renderer& renderer, const Vec3d& start, const Vec3d& end,
+void ScalarGrid<T>::drawSupersampledValues(const std::string& label, const Vec3d& start, const Vec3d& end,
                                            const Vec3d& sampleRadius, int samples, double sampleSize) const
 {
     std::pair<T, T> minMaxPair = minAndMaxValue();
@@ -540,9 +512,11 @@ void ScalarGrid<T>::drawSupersampledValues(Renderer& renderer, const Vec3d& star
     Vec3i startIndex(ceil(start).cast<int>());
     Vec3i endIndex(floor(end).cast<int>());
 
+    VecVec3d pts;
+    std::vector<glm::vec3> colors;
+
     forEachVoxelRange(startIndex, endIndex, [&](const Vec3i& cell)
     {
-        // Supersample
         double dx = 2. * sampleRadius.maxCoeff() / double(samples);
         Vec3d indexPoint = cell.cast<double>();
         Vec3d sampleOffset;
@@ -555,25 +529,28 @@ void ScalarGrid<T>::drawSupersampledValues(Renderer& renderer, const Vec3d& star
 
                     T value = (triLerp(worldPoint) - minSample) / (maxSample - minSample);
 
-                    renderer.addPoint(worldPoint, Vec3d(value, value, 0), sampleSize);
+                    pts.push_back(worldPoint);
+                    colors.push_back(glm::vec3((float)value, (float)value, 0.f));
                 }
     });
+
+    auto* pc = polyscope::registerPointCloud(label + " supersampled values", pts);
+    pc->setPointRadius(sampleSize);
+    pc->addColorQuantity("values", colors)->setEnabled(true);
 }
 
-// Warning: there is no protection here for ASSERT border types
 template <typename T>
-void ScalarGrid<T>::drawSupersampledValuesVolume(Renderer& renderer, double sampleRadius, int samples,
+void ScalarGrid<T>::drawSupersampledValuesVolume(const std::string& label, double sampleRadius, int samples,
                                                  double sampleSize) const
 {
     Vec3d start = Vec3d::Zero();
     Vec3d end = this->mySize.template cast<double>() - Vec3d::Ones();
 
-    drawSupersampledValues(renderer, start, end, Vec3d::Constant(sampleRadius), samples, sampleSize);
+    drawSupersampledValues(label, start, end, Vec3d::Constant(sampleRadius), samples, sampleSize);
 }
 
-// Warning: there is no protection here for ASSERT border types
 template <typename T>
-void ScalarGrid<T>::drawSupersampledValuesPlane(Renderer& renderer, Axis planeAxis, double position, double sampleRadius,
+void ScalarGrid<T>::drawSupersampledValuesPlane(const std::string& label, Axis planeAxis, double position, double sampleRadius,
                                                 int samples, double sampleSize) const
 {
     position = std::clamp(position, double(0), double(1));
@@ -586,29 +563,26 @@ void ScalarGrid<T>::drawSupersampledValuesPlane(Renderer& renderer, Axis planeAx
     {
         start[0] = std::floor(position * double(myGridSize[0] - 1));
         end[0] = start[0] + 1;
-
         localRadius[0] = 0;
     }
     else if (planeAxis == Axis::YAXIS)
     {
         start[1] = std::floor(position * double(myGridSize[1] - 1));
         end[1] = start[1] + 1;
-
         localRadius[1] = 0;
     }
     else if (planeAxis == Axis::ZAXIS)
     {
         start[2] = std::floor(position * double(myGridSize[2] - 1));
         end[2] = start[2] + 1;
-
         localRadius[2] = 0;
     }
 
-    drawSupersampledValues(renderer, start, end, localRadius, samples, sampleSize);
+    drawSupersampledValues(label + " plane", start, end, localRadius, samples, sampleSize);
 }
 
 template <typename T>
-void ScalarGrid<T>::drawSampleGradientsPlane(Renderer& renderer, Axis planeAxis, double position, const Vec3d& colour,
+void ScalarGrid<T>::drawSampleGradientsPlane(const std::string& label, Axis planeAxis, double position, const Vec3d& colour,
                                              double length) const
 {
     position = std::clamp(position, double(0), double(1));
@@ -635,20 +609,21 @@ void ScalarGrid<T>::drawSampleGradientsPlane(Renderer& renderer, Axis planeAxis,
         end[2] = planeIndex;
     }
 
-    VecVec3d samplePoints;
-    VecVec3d gradientPoints;
+    VecVec3d segments;
 
     forEachVoxelRange(start, end, [&](const Vec3i& cell)
     {
         Vec3d worldPoint = indexToWorld(cell.cast<double>());
-        samplePoints.push_back(worldPoint);
-
         Vec3t<T> gradVector = triLerpGradient(worldPoint);
         Vec3d vectorEnd = worldPoint + length * gradVector;
-        gradientPoints.push_back(vectorEnd);
+
+        segments.push_back(worldPoint);
+        segments.push_back(vectorEnd);
     });
 
-    renderer.addLines(samplePoints, gradientPoints, colour);
+    auto* cn = polyscope::registerCurveNetworkSegments(label + " gradients", segments);
+    cn->setColor(glm::vec3((float)colour[0], (float)colour[1], (float)colour[2]));
+    cn->setRadius(.0005);
 }
 
 }

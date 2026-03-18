@@ -10,7 +10,6 @@
 
 #include "Integrator.h"
 #include "LevelSet.h"
-#include "Renderer.h"
 #include "ScalarGrid.h"
 #include "Timer.h"
 #include "Transform.h"
@@ -27,8 +26,8 @@ public:
     template <typename RHS, typename Solution>
     double solve(const RHS& rhsFunction, const Solution& solutionFunction);
 
-    void drawGrid(Renderer& renderer) const;
-    void drawValues(Renderer& renderer) const;
+    void drawGrid(const std::string& label) const;
+    void drawValues(const std::string& label) const;
 
 private:
     Transform myXform;

@@ -7,3 +7,6 @@
 [submodule "externals/onetbb"]
 	path = externals/onetbb
 	url = https://github.com/uxlfoundation/oneTBB.git
+[submodule "externals/polyscope"]
+	path = externals/polyscope
+	url = https://github.com/nmwsharp/polyscope.git

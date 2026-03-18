@@ -74,13 +74,13 @@ public:
     double maxVelocityMagnitude() { return myLiquidVelocity.maxMagnitude(); }
 
     // Rendering tools
-    void drawGrid(Renderer& renderer, bool onlyDrawNarrowBand = false) const;
+    void drawGrid(const std::string& label, bool onlyDrawNarrowBand = false) const;
 
-    void drawLiquidSurface(Renderer& renderer) const;
-    void drawLiquidVelocity(Renderer& renderer, Axis planeAxis, double planePosition, double length) const;
+    void drawLiquidSurface(const std::string& label) const;
+    void drawLiquidVelocity(const std::string& label, Axis planeAxis, double planePosition, double length) const;
 
-    void drawSolidSurface(Renderer& renderer) const;
-    void drawSolidVelocity(Renderer& renderer, Axis planeAxis, double planePosition, double length) const;
+    void drawSolidSurface(const std::string& label) const;
+    void drawSolidVelocity(const std::string& label, Axis planeAxis, double planePosition, double length) const;
 
     void writeLiquidSurface(const std::string& filename) const;
 

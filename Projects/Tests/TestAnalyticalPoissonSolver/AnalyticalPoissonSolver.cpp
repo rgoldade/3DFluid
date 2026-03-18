@@ -1,7 +1,5 @@
 #include "AnalyticalPoissonSolver.h"
 
-#include "Renderer.h"
+void AnalyticalPoissonSolver::drawGrid(const std::string& label) const { myPoissonGrid.drawGrid(label); }
 
-void AnalyticalPoissonSolver::drawGrid(Renderer& renderer) const { myPoissonGrid.drawGrid(renderer); }
-
-//void AnalyticalPoissonSolver::drawValues(Renderer& renderer) const { myPoissonGrid.drawSupersampledValues(renderer); }
+void AnalyticalPoissonSolver::drawValues(const std::string& label) const { myPoissonGrid.drawSupersampledValuesVolume(label); }

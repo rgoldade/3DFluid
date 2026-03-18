@@ -3,7 +3,6 @@
 
 #include "GeometricConjugateGradientSolver.h"
 #include "LevelSet.h"
-#include "Renderer.h"
 #include "ScalarGrid.h"
 #include "Utilities.h"
 #include "VectorGrid.h"

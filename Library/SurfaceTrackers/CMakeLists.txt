@@ -5,10 +5,9 @@ add_library(SurfaceTrackers
 				TriMesh.cpp)
 
 target_link_libraries(SurfaceTrackers
-						PUBLIC
-						RenderTools
-						SimTools
-						Utilities)
+					PUBLIC
+					SimTools
+					Utilities)
 
 target_include_directories(SurfaceTrackers PUBLIC
 							  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

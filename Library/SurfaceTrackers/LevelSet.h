@@ -1,9 +1,10 @@
 #ifndef FLUIDSIM3D_LEVELSET_H
 #define FLUIDSIM3D_LEVELSET_H
 
+#include <string>
+
 #include "FieldAdvector.h"
 #include "Predicates.h"
-#include "Renderer.h"
 #include "ScalarGrid.h"
 #include "Transform.h"
 #include "TriMesh.h"
@@ -93,18 +94,16 @@ public:
     // the caller has verified an interface (sign change) between the two.
     Vec3d interpolateInterface(const Vec3i& startPoint, const Vec3i& endPoint) const;
 
-    void drawGrid(Renderer& renderer, bool doOnlyNarrowBand) const;
+    void drawGrid(const std::string& label, bool doOnlyNarrowBand) const;
 
-    void drawGridPlane(Renderer& renderer, Axis planeAxis, double position, bool doOnlyNarrowBand) const;
+    void drawGridPlane(const std::string& label, Axis planeAxis, double position, bool doOnlyNarrowBand) const;
 
-    // Display a supersampled slice of the grid. The plane will have a normal in the plane_axis direction.
-    // The position is from [0,1] where 0 is at the grid origin and 1 is at the origin + size * dx.
-    void drawSupersampledValuesPlane(Renderer& renderer, Axis planeAxis, double position, double radius = .5,
-                                     int samples = 5, double sampleSize = 1) const;
-    void drawSampleNormalsPlane(Renderer& renderer, Axis planeAxis, double position, const Vec3d& colour = Vec3d::Constant(.5),
+    void drawSupersampledValuesPlane(const std::string& label, Axis planeAxis, double position, double radius = .5,
+                                     int samples = 5, double sampleSize = .001) const;
+    void drawSampleNormalsPlane(const std::string& label, Axis planeAxis, double position, const Vec3d& colour = Vec3d::Constant(.5),
                                 double length = .25) const;
 
-    void drawSurface(Renderer& renderer, const Vec3d& colour = Vec3d::Zero(), double lineWidth = 1) const;
+    void drawSurface(const std::string& label, const Vec3d& colour = Vec3d::Zero()) const;
 
 private:
 

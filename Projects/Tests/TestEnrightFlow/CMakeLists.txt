@@ -1,12 +1,12 @@
 add_executable(TestEnrightFlow TestEnrightFlow.cpp)
 
 target_link_libraries(TestEnrightFlow
-						PRIVATE
-						MeshRebuilderLibrary
-						RenderTools
-						SimTools
-						SurfaceTrackers
-						Utilities)
+					PRIVATE
+					MeshRebuilderLibrary
+					polyscope
+					SimTools
+					SurfaceTrackers
+					Utilities)
 
 file(RELATIVE_PATH REL ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR})
 

@@ -17,7 +17,7 @@ target_include_directories(Utilities PUBLIC
 								$<INSTALL_INTERFACE:include>)
 
 target_link_libraries(Utilities
-						PUBLIC
-						RenderTools)
+					PUBLIC
+					polyscope)
 
 set_target_properties(Utilities PROPERTIES FOLDER ${SOURCE_FOLDER})

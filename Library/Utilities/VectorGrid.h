@@ -144,23 +144,24 @@ public:
     Vec3i gridSize() const { return myGridSize; }
     SampleType sampleType() const { return mySampleType; }
 
-    // Rendering methods
-    void drawGrid(Renderer& renderer) const;
-    void drawSamplePoints(Renderer& renderer, const Vec3d& colour0 = Vec3d(1, 0, 0),
+    // Polyscope rendering methods
+    void drawGrid(const std::string& label) const;
+    void drawSamplePoints(const std::string& label,
+                          const Vec3d& colour0 = Vec3d(1, 0, 0),
                           const Vec3d& colour1 = Vec3d(0, 1, 0), const Vec3d& colour2 = Vec3d(0, 0, 1),
-                          const Vec3d& sampleSizes = Vec3d::Constant(5.)) const;
+                          const Vec3d& sampleSizes = Vec3d::Constant(.001)) const;
 
-    void drawSamplePointCell(Renderer& renderer, const Vec3i& cell, const Vec3d& colour0 = Vec3d(1, 0, 0),
+    void drawSamplePointCell(const std::string& label, const Vec3i& cell, const Vec3d& colour0 = Vec3d(1, 0, 0),
                              const Vec3d& colour1 = Vec3d(0, 1, 0), const Vec3d& colour2 = Vec3d(0, 0, 1),
-                             const Vec3d& sampleSizes = Vec3d::Constant(5.)) const;
+                             const Vec3d& sampleSizes = Vec3d::Constant(.001)) const;
 
-    void drawSamplePointVectors(Renderer& renderer, Axis planeAxis, double position,
+    void drawSamplePointVectors(const std::string& label, Axis planeAxis, double position,
                                 const Vec3d& colour = Vec3d(0, 0, 1), double length = .25) const;
 
-    void drawSuperSampledValuesPlane(Renderer& renderer, Axis gridAxis, Axis planeAxis, double position,
-                                     double sampleRadius = .5, int samples = 5, double sampleSize = 1) const;
+    void drawSuperSampledValuesPlane(const std::string& label, Axis gridAxis, Axis planeAxis, double position,
+                                     double sampleRadius = .5, int samples = 5, double sampleSize = .001) const;
 
-    void drawGridCell(Renderer& renderer, const Vec3i& coord) const;
+    void drawGridCell(const std::string& label, const Vec3i& coord) const;
 
 private:
     // This method is private to prevent future mistakes between this transform
@@ -237,37 +238,37 @@ T VectorGrid<T>::maxMagnitude() const
 }
 
 template <typename T>
-void VectorGrid<T>::drawGrid(Renderer& renderer) const
+void VectorGrid<T>::drawGrid(const std::string& label) const
 {
-    myGrids[0].drawGrid(renderer);
+    myGrids[0].drawGrid(label);
 }
 
 template <typename T>
-void VectorGrid<T>::drawGridCell(Renderer& renderer, const Vec3i& cell) const
+void VectorGrid<T>::drawGridCell(const std::string& label, const Vec3i& cell) const
 {
-    myGrids[0].drawGridCell(renderer, cell);
+    myGrids[0].drawGridCell(label, cell);
 }
 
 template <typename T>
-void VectorGrid<T>::drawSamplePoints(Renderer& renderer, const Vec3d& colour0, const Vec3d& colour1,
+void VectorGrid<T>::drawSamplePoints(const std::string& label, const Vec3d& colour0, const Vec3d& colour1,
                                      const Vec3d& colour2, const Vec3d& sampleSizes) const
 {
-    myGrids[0].drawSamplePoints(renderer, colour0, sampleSizes[0]);
-    myGrids[1].drawSamplePoints(renderer, colour1, sampleSizes[1]);
-    myGrids[2].drawSamplePoints(renderer, colour2, sampleSizes[2]);
+    myGrids[0].drawSamplePoints(label + " x", colour0, sampleSizes[0]);
+    myGrids[1].drawSamplePoints(label + " y", colour1, sampleSizes[1]);
+    myGrids[2].drawSamplePoints(label + " z", colour2, sampleSizes[2]);
 }
 
 template <typename T>
-void VectorGrid<T>::drawSamplePointCell(Renderer& renderer, const Vec3i& cell, const Vec3d& colour0,
+void VectorGrid<T>::drawSamplePointCell(const std::string& label, const Vec3i& cell, const Vec3d& colour0,
                                         const Vec3d& colour1, const Vec3d& colour2, const Vec3d& sampleSizes) const
 {
-    myGrids[0].drawSamplePoints(renderer, cell, colour0, sampleSizes[0]);
-    myGrids[1].drawSamplePoints(renderer, cell, colour1, sampleSizes[1]);
-    myGrids[2].drawSamplePoints(renderer, cell, colour2, sampleSizes[2]);
+    myGrids[0].drawCellSamplePoint(label + " x", cell, colour0, sampleSizes[0]);
+    myGrids[1].drawCellSamplePoint(label + " y", cell, colour1, sampleSizes[1]);
+    myGrids[2].drawCellSamplePoint(label + " z", cell, colour2, sampleSizes[2]);
 }
 
 template <typename T>
-void VectorGrid<T>::drawSamplePointVectors(Renderer& renderer, Axis planeAxis, double position, const Vec3d& colour,
+void VectorGrid<T>::drawSamplePointVectors(const std::string& label, Axis planeAxis, double position, const Vec3d& colour,
                                            double length) const
 {
     position = std::clamp(position, double(0), double(1));
@@ -291,35 +292,36 @@ void VectorGrid<T>::drawSamplePointVectors(Renderer& renderer, Axis planeAxis, d
         end[2] = start[2] + 1;
     }
 
-    VecVec3d startPoints;
-    VecVec3d endPoints;
+    VecVec3d segments;
 
     forEachVoxelRange(start, end, [&](const Vec3i& cell)
     {
         Vec3d worldPoint = indexToWorld(cell.cast<double>() + Vec3d::Constant(.5));
-        startPoints.push_back(worldPoint);
-
         Vec3t<T> sampleVector = triLerp(worldPoint);
         Vec3d vectorEnd = worldPoint + length * sampleVector;
-        endPoints.push_back(vectorEnd);
+
+        segments.push_back(worldPoint);
+        segments.push_back(vectorEnd);
     });
 
-    renderer.addLines(startPoints, endPoints, colour);
+    auto* cn = polyscope::registerCurveNetworkSegments(label + " vectors", segments);
+    cn->setColor(glm::vec3((float)colour[0], (float)colour[1], (float)colour[2]));
+    cn->setRadius(.0001);
 }
 
 template <typename T>
-void VectorGrid<T>::drawSuperSampledValuesPlane(Renderer& renderer, Axis gridAxis, Axis planeAxis, double position,
+void VectorGrid<T>::drawSuperSampledValuesPlane(const std::string& label, Axis gridAxis, Axis planeAxis, double position,
                                                 double sampleRadius, int samples, double sampleSize) const
 {
     int gridAxisInt;
     if (gridAxis == Axis::XAXIS)
         gridAxisInt = 0;
-    else if (gridAxis == Axis::XAXIS)
+    else if (gridAxis == Axis::YAXIS)
         gridAxisInt = 1;
     else
         gridAxisInt = 2;
 
-    myGrids[gridAxisInt].drawSuperSampledValuesPlane(renderer, planeAxis, position, sampleRadius, samples, sampleSize);
+    myGrids[gridAxisInt].drawSupersampledValuesPlane(label, planeAxis, position, sampleRadius, samples, sampleSize);
 }
 
 }  // namespace FluidSim3D::Utilities

@@ -9,6 +9,8 @@
 #include "tbb/parallel_reduce.h"
 #include "tbb/parallel_sort.h"
 
+#include "polyscope/surface_mesh.h"
+
 namespace FluidSim3D
 {
 
@@ -123,112 +125,16 @@ AlignedBox3d TriMesh::boundingBox() const
     return bbox;
 }
 
-void TriMesh::drawMesh(Renderer& renderer, bool doRenderTriFaces, Vec3d triFaceColour, bool doRenderTriNormals, Vec3d normalColour, bool doRenderVertices, Vec3d vertexColour,
-                       bool doRenderTriEdges, Vec3d edgeColour, bool doRenderVertexNormals, Vec3d vertexNormalColours)
-{    
-    // Pre-compute area-weighted triangle normals
-    // and set triangle faces
-    VecVec3d weightedTriNormals(myTriangles.size(), Vec3d::Zero());
+void TriMesh::drawMesh(const std::string& label, const Vec3d& colour) const
+{
+    // TODO: restore optional rendering of triangle normals, vertex normals,
+    // vertices, and edges using polyscope's addFaceVectorQuantity,
+    // addVertexVectorQuantity, etc.
+    if (myTriangles.empty() || myVertices.empty()) return;
 
-    // Render triangles
-    VecVec3d vertexNormals(myVertices.size(), Vec3d::Zero());
-
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
-    {
-        for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
-        {
-            weightedTriNormals[triIndex] = scaledNormal(int(triIndex));
-        }
-    });
-
-    // Accumulate area-weight triangle normals to each vertex and normalize.
-    // Set vertex points.
-    tbb::parallel_for(tbb::blocked_range<size_t>(0, myVertices.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
-    {
-        for (size_t vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-        {
-            for (int triIndex : myAdjacentTriangles[vertexIndex])
-            {
-                vertexNormals[vertexIndex] += weightedTriNormals[triIndex];
-            }
-
-            vertexNormals[vertexIndex].normalize();
-        }
-    });
-
-    if (doRenderTriFaces) renderer.addTriFaces(myVertices, vertexNormals, myTriangles, triFaceColour);
-
-    // Render triangle normals
-    if (doRenderTriNormals)
-    {
-        VecVec3d startPoints(myTriangles.size());
-        VecVec3d endPoints(myTriangles.size());
-
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
-        {
-            for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
-            {
-                const Vec3i& tri = myTriangles[triIndex];
-
-                Vec3d localNormalStart = Vec3d::Zero();
-
-                for (int localVertexIndex : {0, 1, 2})
-                    localNormalStart += myVertices[tri[localVertexIndex]];
-
-                localNormalStart *= 1. / 3.;
-
-                startPoints[triIndex] = localNormalStart;
-
-                // Get triangle normal end point
-                endPoints[triIndex] = startPoints[triIndex] + .1 * weightedTriNormals[triIndex].normalized();
-            }
-        });
-
-        renderer.addLines(startPoints, endPoints, normalColour);
-    }
-
-    // Render vertices
-    if (doRenderVertices) renderer.addPoints(myVertices, vertexColour, 2.);
-
-    if (doRenderTriEdges)
-    {
-        VecVec3d startPoints(3 * myTriangles.size());
-        VecVec3d endPoints(3 * myTriangles.size());
-
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, myTriangles.size(), tbbLightGrainSize), [&](const tbb::blocked_range<size_t>& range)
-        {
-            for (size_t triIndex = range.begin(); triIndex != range.end(); ++triIndex)
-            {
-                const Vec3i& tri = myTriangles[triIndex];
-                for (int localStartVertexIndex : {0, 1, 2})
-                {
-                    int localEndVertexIndex = (localStartVertexIndex + 1) % 3;
-                    startPoints[3 * triIndex + localStartVertexIndex] = myVertices[tri[localStartVertexIndex]];
-                    endPoints[3 * triIndex + localStartVertexIndex] = myVertices[tri[localEndVertexIndex]];
-                }
-            }
-        });
-
-        renderer.addLines(startPoints, endPoints, edgeColour);
-    }
-
-    if (doRenderVertexNormals)
-    {
-        VecVec3d vertexNormals = computeVertexNormals();
-
-        VecVec3d startPoints = myVertices;
-        VecVec3d endPoints = myVertices;
-
-        tbb::parallel_for(tbb::blocked_range<int>(0, int(myVertices.size())), [&](const tbb::blocked_range<int>& range)
-        {
-            for (int vertexIndex = range.begin(); vertexIndex != range.end(); ++vertexIndex)
-            {
-                endPoints[vertexIndex] += .1 * vertexNormals[vertexIndex];
-            }
-        });
-
-        renderer.addLines(startPoints, endPoints, vertexNormalColours);
-    }
+    auto* mesh = polyscope::registerSurfaceMesh(label, myVertices, myTriangles);
+    mesh->setSurfaceColor(glm::vec3((float)colour[0], (float)colour[1], (float)colour[2]));
+    mesh->setEdgeWidth(1.0);
 }
 
 void TriMesh::writeAsOBJ(const std::string &filename) const

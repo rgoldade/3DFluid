@@ -1,10 +1,10 @@
 add_executable(TestScalarGrid TestScalarGrid.cpp)
 
 target_link_libraries(TestScalarGrid
-						PRIVATE
-						RenderTools
-						SurfaceTrackers
-						Utilities)
+					PRIVATE
+					polyscope
+					SurfaceTrackers
+					Utilities)
 
 file( RELATIVE_PATH REL ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )						
 

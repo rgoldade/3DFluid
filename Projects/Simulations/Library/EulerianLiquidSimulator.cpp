@@ -8,38 +8,34 @@
 #include "Timer.h"
 #include "ViscositySolver.h"
 
-void EulerianLiquidSimulator::drawGrid(Renderer& renderer, bool onlyDrawNarrowBand) const
+void EulerianLiquidSimulator::drawGrid(const std::string& label, bool onlyDrawNarrowBand) const
 {
-    myLiquidSurface.drawGrid(renderer, onlyDrawNarrowBand);
+    myLiquidSurface.drawGrid(label, onlyDrawNarrowBand);
 }
 
-void EulerianLiquidSimulator::drawLiquidSurface(Renderer& renderer) const
+void EulerianLiquidSimulator::drawLiquidSurface(const std::string& label) const
 {
     TriMesh liquidSurfaceMesh = myLiquidSurface.buildMesh();
-    liquidSurfaceMesh.drawMesh(renderer, true /* render tri faces */, Vec3d::Constant(.5), false /* don't render tri normals */,
-                               Vec3d::Zero(), false /* don't render tri vertices */, Vec3d::Zero(), true /* render tri edges */,
-                               Vec3d(0, 1, 0));
+    liquidSurfaceMesh.drawMesh(label + " liquid surface", Vec3d::Constant(.5));
 }
 
-void EulerianLiquidSimulator::drawLiquidVelocity(Renderer& renderer, Axis planeAxis, double planePosition,
+void EulerianLiquidSimulator::drawLiquidVelocity(const std::string& label, Axis planeAxis, double planePosition,
                                                  double length) const
 {
-    myLiquidVelocity.drawSamplePointVectors(renderer, planeAxis, planePosition, Vec3d::Zero(),
+    myLiquidVelocity.drawSamplePointVectors(label + " liquid velocity", planeAxis, planePosition, Vec3d::Zero(),
                                             myLiquidVelocity.dx() * length);
 }
 
-void EulerianLiquidSimulator::drawSolidSurface(Renderer& renderer) const
+void EulerianLiquidSimulator::drawSolidSurface(const std::string& label) const
 {
     TriMesh solidSurfaceMesh = mySolidSurface.buildMesh();
-    solidSurfaceMesh.drawMesh(renderer, false /* don't render tri faces */, Vec3d::Zero(),
-                              false /* don't render tri normals */, Vec3d::Zero(), false /* don't render tri vertices */,
-                              Vec3d::Zero(), true /* render tri edges */, Vec3d::Constant(.25));
+    solidSurfaceMesh.drawMesh(label + " solid surface", Vec3d::Constant(.25));
 }
 
-void EulerianLiquidSimulator::drawSolidVelocity(Renderer& renderer, Axis planeAxis, double planePosition,
+void EulerianLiquidSimulator::drawSolidVelocity(const std::string& label, Axis planeAxis, double planePosition,
                                                 double length) const
 {
-    mySolidVelocity.drawSamplePointVectors(renderer, planeAxis, planePosition, Vec3d(0, 1, 0),
+    mySolidVelocity.drawSamplePointVectors(label + " solid velocity", planeAxis, planePosition, Vec3d(0, 1, 0),
                                            mySolidVelocity.dx() * length);
 }
 

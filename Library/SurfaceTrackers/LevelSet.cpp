@@ -8,6 +8,8 @@
 #include "tbb/blocked_range3d.h"
 #include "tbb/tbb.h"
 
+#include "polyscope/surface_mesh.h"
+
 namespace FluidSim3D
 {
 
@@ -390,20 +392,24 @@ Vec3d LevelSet::interpolateInterface(const Vec3i& startPoint, const Vec3i& endPo
     return startPoint.cast<double>() + theta * (endPoint - startPoint).cast<double>();
 }
 
-void LevelSet::drawGrid(Renderer& renderer, bool doOnlyNarrowBand) const
+void LevelSet::drawGrid(const std::string& label, bool doOnlyNarrowBand) const
 {
     if (doOnlyNarrowBand)
     {
+        VecVec3i cells;
         forEachVoxelRange(Vec3i::Zero().eval(), size(), [&](const Vec3i& cell)
         {
-            if (std::fabs(myPhiGrid(cell)) < myNarrowBand) myPhiGrid.drawGridCell(renderer, cell);
+            if (std::fabs(myPhiGrid(cell)) < myNarrowBand)
+                cells.push_back(cell);
         });
+
+        myPhiGrid.drawGridCellList(label + " grid", cells);
     }
     else
-        myPhiGrid.drawGrid(renderer);
+        myPhiGrid.drawGrid(label);
 }
 
-void LevelSet::drawGridPlane(Renderer& renderer, Axis planeAxis, double position, bool doOnlyNarrowBand) const
+void LevelSet::drawGridPlane(const std::string& label, Axis planeAxis, double position, bool doOnlyNarrowBand) const
 {
     position = std::clamp(position, double(0), double(1));
 
@@ -426,34 +432,32 @@ void LevelSet::drawGridPlane(Renderer& renderer, Axis planeAxis, double position
         end[2] = start[2] + 1;
     }
 
+    VecVec3i cells;
     forEachVoxelRange(start, end, [&](const Vec3i& cell)
     {
-        if (doOnlyNarrowBand)
-        {
-            if (std::fabs(myPhiGrid(cell)) < myNarrowBand) myPhiGrid.drawGridCell(renderer, cell);
-        }
-        else
-            myPhiGrid.drawGridCell(renderer, cell);
+        if (doOnlyNarrowBand && std::fabs(myPhiGrid(cell)) >= myNarrowBand) return;
+        cells.push_back(cell);
     });
+
+    myPhiGrid.drawGridCellList(label + " grid plane", cells);
 }
 
-// Display a supersampled slice of the grid. The plane will have a normal in the plane_axis direction.
-// The position is from [0,1] where 0 is at the grid origin and 1 is at the origin + size * dx.
-void LevelSet::drawSupersampledValuesPlane(Renderer& renderer, Axis planeAxis, double position, double radius,
+void LevelSet::drawSupersampledValuesPlane(const std::string& label, Axis planeAxis, double position, double radius,
                                            int samples, double sampleSize) const
 {
-    myPhiGrid.drawSupersampledValuesPlane(renderer, planeAxis, position, radius, samples, sampleSize);
-}
-void LevelSet::drawSampleNormalsPlane(Renderer& renderer, Axis planeAxis, double position, const Vec3d& colour,
-                                      double length) const
-{
-    myPhiGrid.drawSampleGradientsPlane(renderer, planeAxis, position, colour, length);
+    myPhiGrid.drawSupersampledValuesPlane(label, planeAxis, position, radius, samples, sampleSize);
 }
 
-void LevelSet::drawSurface(Renderer& renderer, const Vec3d& colour, double lineWidth) const
+void LevelSet::drawSampleNormalsPlane(const std::string& label, Axis planeAxis, double position, const Vec3d& colour,
+                                      double length) const
+{
+    myPhiGrid.drawSampleGradientsPlane(label, planeAxis, position, colour, length);
+}
+
+void LevelSet::drawSurface(const std::string& label, const Vec3d& colour) const
 {
     TriMesh tempMesh = buildMesh();
-    tempMesh.drawMesh(renderer, true, colour, lineWidth);
+    tempMesh.drawMesh(label, colour);
 }
 
 // 

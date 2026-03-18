@@ -1,11 +1,11 @@
 add_executable(TestInitialGeometry TestInitialGeometry.cpp)
 
 target_link_libraries(TestInitialGeometry
-						PRIVATE
-						RenderTools
-						SimTools
-						SurfaceTrackers
-						Utilities)
+					PRIVATE
+					polyscope
+					SimTools
+					SurfaceTrackers
+					Utilities)
 
 file( RELATIVE_PATH REL ${PROJECT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR} )						
 
