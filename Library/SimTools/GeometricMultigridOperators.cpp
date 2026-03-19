@@ -12,7 +12,7 @@ std::pair<double, double> computeLaplacian(const UniformGrid<double>& source,
 	const Vec3i& cell,
 	const VectorGrid<double>* boundaryWeights = nullptr)
 {
-	assert(source.size() == domainCellLabels.size());
+	assert((source.size().array() == domainCellLabels.size().array()).all());
 
 	if (boundaryWeights != nullptr)
 	{
@@ -76,7 +76,7 @@ std::pair<double, double> computeLaplacian(const UniformGrid<double>& source,
 				{
 					if (boundaryWeights != nullptr)
 					{
-						assert((*boundaryWeights)(face, axis) == 1);\
+						assert((*boundaryWeights)(face, axis) == 1);
 					}
 
 					laplacian -= double(source(adjacentCell));
@@ -132,7 +132,7 @@ void interiorJacobiPoissonSmoother(UniformGrid<double>& solution,
 	const VectorGrid<double>* boundaryWeights)
 
 {
-	assert(solution.size() == rhs.size() && solution.size() == domainCellLabels.size());
+	assert((solution.size().array() == rhs.size().array()).all() && (solution.size().array() == domainCellLabels.size().array()).all());
 
 	UniformGrid<double> tempSolution = solution;
 
@@ -178,7 +178,7 @@ void boundaryJacobiPoissonSmoother(UniformGrid<double>& solution,
 	const double dx,
 	const VectorGrid<double>* boundaryWeights)
 {
-	assert(solution.size() == rhs.size() && solution.size() == domainCellLabels.size());
+	assert((solution.size().array() == rhs.size().array()).all() && (solution.size().array() == domainCellLabels.size().array()).all());
 
 	if (boundaryWeights != nullptr)
 	{
@@ -248,7 +248,7 @@ void applyPoissonMatrix(UniformGrid<double>& destination,
 	const double dx,
 	const VectorGrid<double>* boundaryWeights)
 {
-	assert(destination.size() == source.size() && source.size() == domainCellLabels.size());
+	assert((destination.size().array() == source.size().array()).all() && (source.size().array() == domainCellLabels.size().array()).all());
 
 	if (boundaryWeights != nullptr)
 	{
@@ -304,9 +304,9 @@ void computePoissonResidual(UniformGrid<double>& residual,
 	const double dx,
 	const VectorGrid<double>* boundaryWeights)
 {
-	assert(residual.size() == solution.size() &&
-		residual.size() == rhs.size() &&
-		residual.size() == domainCellLabels.size());
+	assert((residual.size().array() == solution.size().array()).all() &&
+		(residual.size().array() == rhs.size().array()).all() &&
+		(residual.size().array() == domainCellLabels.size().array()).all());
 
 	residual.reset(0);
 
@@ -322,9 +322,9 @@ void downsample(UniformGrid<double>& destinationGrid,
 	constexpr double restrictionWeights[4] = { 1. / 8., 3. / 8., 3. / 8., 1. / 8. };
 
 	// Make sure both source and destination grid are powers of 2 and one level apart.
-	assert((2 * destinationGrid.size()).eval() == sourceGrid.size());
-	assert(destinationGrid.size() == destinationCellLabels.size());
-	assert(sourceGrid.size() == sourceCellLabels.size());
+	assert(((2 * destinationGrid.size()).eval().array() == sourceGrid.size().array()).all());
+	assert((destinationGrid.size().array() == destinationCellLabels.size().array()).all());
+	assert((sourceGrid.size().array() == sourceCellLabels.size().array()).all());
 
 	for (int axis : {0, 1, 2})
 	{
@@ -379,9 +379,9 @@ void upsampleAndAdd(UniformGrid<double>& destinationGrid,
 	const UniformGrid<CellLabels>& sourceCellLabels)
 {
 	// Make sure both source and destination grid are powers of 2 and one level apart.
-	assert((destinationGrid.size() / 2).eval() == sourceGrid.size());
-	assert(destinationGrid.size() == destinationCellLabels.size());
-	assert(sourceGrid.size() == sourceCellLabels.size());
+	assert(((destinationGrid.size() / 2).eval().array() == sourceGrid.size().array()).all());
+	assert((destinationGrid.size().array() == destinationCellLabels.size().array()).all());
+	assert((sourceGrid.size().array() == sourceCellLabels.size().array()).all());
 
 	assert(destinationGrid.size()[0] % 2 == 0 &&
 		destinationGrid.size()[1] % 2 == 0 &&
@@ -439,7 +439,7 @@ double dotProduct(const UniformGrid<double>& vectorGridA,
 	const UniformGrid<double>& vectorGridB,
 	const UniformGrid<CellLabels>& domainCellLabels)
 {
-	assert(vectorGridA.size() == vectorGridB.size() && vectorGridB.size() == domainCellLabels.size());
+	assert((vectorGridA.size().array() == vectorGridB.size().array()).all() && (vectorGridB.size().array() == domainCellLabels.size().array()).all());
 
 	double result = tbb::parallel_deterministic_reduce(tbb::blocked_range<int>(0, domainCellLabels.voxelCount(), tbbLightGrainSize), double(0), 
 	[&](const tbb::blocked_range<int>& range, double result) -> double
@@ -469,7 +469,7 @@ void addToVector(UniformGrid<double>& destination,
 	const UniformGrid<CellLabels>& domainCellLabels,
 	const double scale)
 {
-	assert(destination.size() == source.size() && source.size() == domainCellLabels.size());
+	assert((destination.size().array() == source.size().array()).all() && (source.size().array() == domainCellLabels.size().array()).all());
 
 	tbb::parallel_for(tbb::blocked_range<int>(0, destination.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 	{
@@ -491,9 +491,9 @@ void addVectors(UniformGrid<double>& destination,
 	const UniformGrid<CellLabels>& domainCellLabels,
 	const double scale)
 {
-	assert(destination.size() == source.size() &&
-		source.size() == scaledSource.size() &&
-		scaledSource.size() == domainCellLabels.size());
+	assert((destination.size().array() == source.size().array()).all() &&
+		(source.size().array() == scaledSource.size().array()).all() &&
+		(scaledSource.size().array() == domainCellLabels.size().array()).all());
 
 	tbb::parallel_for(tbb::blocked_range<int>(0, destination.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 	{
@@ -512,7 +512,7 @@ void addVectors(UniformGrid<double>& destination,
 double squaredl2Norm(const UniformGrid<double>& vectorGrid,
 	const UniformGrid<CellLabels>& domainCellLabels)
 {
-	assert(vectorGrid.size() == domainCellLabels.size());
+	assert((vectorGrid.size().array() == domainCellLabels.size().array()).all());
 
 	double squaredNorm = tbb::parallel_deterministic_reduce(tbb::blocked_range<int>(0, domainCellLabels.voxelCount(), tbbLightGrainSize), double(0),
 	[&](const tbb::blocked_range<int>& range, double squaredNorm) -> double
@@ -540,7 +540,7 @@ double squaredl2Norm(const UniformGrid<double>& vectorGrid,
 double lInfinityNorm(const UniformGrid<double>& vectorGrid,
 	const UniformGrid<CellLabels>& domainCellLabels)
 {
-	assert(vectorGrid.size() == domainCellLabels.size());
+	assert((vectorGrid.size().array() == domainCellLabels.size().array()).all());
 
 	double infNorm = tbb::parallel_reduce(tbb::blocked_range<int>(0, domainCellLabels.voxelCount(), tbbLightGrainSize), double(0),
 	[&](const tbb::blocked_range<int>& range, double infNorm) -> double
@@ -788,7 +788,7 @@ UniformGrid<CellLabels> buildCoarseCellLabels(const UniformGrid<CellLabels>& sou
 VecVec3i buildBoundaryCells(const UniformGrid<CellLabels>& sourceCellLabels,
 										int boundaryWidth)
 {
-	assert(sourceCellLabels.size()[0] % 2 == 0 && sourceCellLabels.size()[1] % 2 == 0);
+	assert(sourceCellLabels.size()[0] % 2 == 0 && sourceCellLabels.size()[1] % 2 == 0 && sourceCellLabels.size()[2] % 2 == 0);
 
 	UniformGrid<VisitedCellLabels> visitedCells(sourceCellLabels.size(), VisitedCellLabels::UNVISITED_CELL);
 

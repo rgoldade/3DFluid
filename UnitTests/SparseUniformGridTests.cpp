@@ -82,7 +82,7 @@ TEST(SPARSE_TILE_TESTS, WRITE_TILE_TEST)
 
 	forEachVoxelRange(Vec3i::Zero(), Vec3i::Constant(10), [&](const Vec3i& cell)
 	{
-		if (cell == Vec3i::Zero())
+		if ((cell.array() == Vec3i::Zero().array()).all())
 		{
 			EXPECT_EQ(tile.getVoxel(cell), value2);
 		}
@@ -121,8 +121,8 @@ TEST(SPARSE_TILE_TESTS, FLATTEN_ROUND_TRIP_TEST)
 TEST(SPARSE_UNIFORM_GRID_TESTS, DEFAULT_CONSTRUCTOR_TEST)
 {
 	SparseUniformGrid<int, 10> sparseGrid;
-	EXPECT_TRUE(sparseGrid.tileSize() == Vec3i::Zero());
-	EXPECT_TRUE(sparseGrid.gridSize() == Vec3i::Zero());
+	EXPECT_TRUE((sparseGrid.tileSize().array() == Vec3i::Zero().array()).all());
+	EXPECT_TRUE((sparseGrid.gridSize().array() == Vec3i::Zero().array()).all());
 }
 
 TEST(SPARSE_UNIFORM_GRID_TESTS, CONSTRUCTOR_TEST)
@@ -130,14 +130,14 @@ TEST(SPARSE_UNIFORM_GRID_TESTS, CONSTRUCTOR_TEST)
 	Vec3i size(100, 200, 300);
 	SparseUniformGrid<double, 10> sparseGrid(size);
 
-	EXPECT_TRUE(sparseGrid.gridSize() == size);
+	EXPECT_TRUE((sparseGrid.gridSize().array() == size.array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), sparseGrid.gridSize(), [&](const Vec3i& cell)
 	{
 		EXPECT_EQ(sparseGrid.getVoxel(cell), double(0));
 	});
 
-	EXPECT_TRUE(sparseGrid.tileSize() == Vec3i(10, 20, 30));
+	EXPECT_TRUE((sparseGrid.tileSize().array() == Vec3i(10, 20, 30).array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), sparseGrid.tileSize(), [&](const Vec3i& tileCoord)
 	{
@@ -154,14 +154,14 @@ TEST(SPARSE_UNIFORM_GRID_TESTS, VALUE_CONSTRUCTOR_TEST)
 	const double value = PI;
 	SparseUniformGrid<double, 10> sparseGrid(size, value);
 
-	EXPECT_TRUE(sparseGrid.gridSize() == size);
+	EXPECT_TRUE((sparseGrid.gridSize().array() == size.array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), sparseGrid.gridSize(), [&](const Vec3i& cell)
 	{
 		EXPECT_EQ(sparseGrid.getVoxel(cell), value);
 	});
 
-	EXPECT_TRUE(sparseGrid.tileSize() == Vec3i(10, 20, 30));
+	EXPECT_TRUE((sparseGrid.tileSize().array() == Vec3i(10, 20, 30).array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), sparseGrid.tileSize(), [&](const Vec3i& tileCoord)
 	{

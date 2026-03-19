@@ -59,7 +59,7 @@ ClosestPointComputer::ClosestPointComputer(const TriMesh& mesh)
 
 	myXform = Transform(dx, origin);
 
-	Vec3i gridSize = myXform.worldToIndex(bbox.max()).array().ceil().cast<int>();
+	Vec3i gridSize = (myXform.worldToIndex(bbox.max()) + Vec3d::Ones()).array().floor().cast<int>();
 	myMeshGrid.resize(gridSize);
 
 	// Insert mesh indices into grid
@@ -81,9 +81,6 @@ ClosestPointComputer::ClosestPointComputer(const TriMesh& mesh)
 			});
 		}
 	});
-
-	std::vector<std::pair<Vec3i, int>> cellTrianglePairs;
-	mergeLocalThreadVectors(cellTrianglePairs, parallelCellTrianglePairs);
 
 	parallelCellTrianglePairs.combine_each([&](const std::vector<std::pair<Vec3i, int>>& cellTrianglePairs)
 	{
@@ -128,7 +125,7 @@ std::pair<Vec3d, int> ClosestPointComputer::computeClosestPoint(const Vec3d& que
 	});
 
 	// Find closest point
-	std::tuple<double, int, Vec3d> cpTuple(radius, -1, Vec3d());
+	std::tuple<double, int, Vec3d> cpTuple(radius, -1, Vec3d::Zero());
 	
 	for (int triIndex : candidateTris)
 	{

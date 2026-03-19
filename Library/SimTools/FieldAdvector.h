@@ -29,7 +29,7 @@ void advectField(double dt, Field& destinationField, const Field& sourceField, c
 
     if (activeCells != nullptr)
     {
-        assert(destinationField.size() == activeCells->size());
+        assert((destinationField.size().array() == activeCells->size().array()).all());
     }
 
     tbb::parallel_for(tbb::blocked_range<int>(0, sourceField.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)

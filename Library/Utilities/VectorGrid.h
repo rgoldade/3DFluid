@@ -138,7 +138,7 @@ public:
 
     double dx() const { return myXform.dx(); }
     const Vec3d& offset() const { return myXform.offset(); }
-    Transform xform() const { return myXform; }
+    const Transform& xform() const { return myXform; }
 
     Vec3i size(int axis) const { return myGrids[axis].size(); }
     Vec3i gridSize() const { return myGridSize; }

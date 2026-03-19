@@ -186,7 +186,7 @@ double AnalyticalViscositySolver::solve(const Initial& initialFunction, const So
 
     double error = 0;
 
-    for (int axis : {0, 1})
+    for (int axis : {0, 1, 2})
     {
         double localError = tbb::parallel_reduce(tbb::blocked_range<int>(0, myVelocityIndex.grid(axis).voxelCount()), double(0),
             [&](const tbb::blocked_range<int>& range, double error) -> double {

@@ -23,7 +23,7 @@ TEST(LEVEL_SET_TESTS, INITIALIZE_TESTS)
     EXPECT_TRUE(surfaceGrid.offset() == origin);
 
     EXPECT_EQ(surfaceGrid.xform(), xform);
-    EXPECT_TRUE(surfaceGrid.size() == gridSize);
+    EXPECT_TRUE((surfaceGrid.size().array() == gridSize.array()).all());
 
     forEachVoxelRange(Vec3i::Zero(), gridSize, [&](const Vec3i& cell)
     {
@@ -187,7 +187,7 @@ static void testUnionFunctions(const std::vector<std::function<double(const Vec3
 {
     // Build individual grids for each iso function
     Transform xform(dx, bbox.min());
-    Vec3i gridSize = ceil(((bbox.max() - bbox.min()) / dx).eval()).cast<int>();
+    Vec3i gridSize = ((bbox.max() - bbox.min()) / dx).array().ceil().cast<int>();
     double bandwidth = gridSize.maxCoeff();
     std::vector<LevelSet> surfaceGrids(isoFuncs.size(), LevelSet(xform, gridSize, bandwidth));
 
@@ -653,18 +653,19 @@ static void testOutOfBoundsMesh(const TriMesh& mesh, double dx)
     Vec3d topRight = bbox.max() - 10. * dx * Vec3d::Ones();
     Transform xform(dx, origin);
 
-    Vec3i gridSize = ceil(((topRight - origin) / dx).eval()).cast<int>();
+    Vec3i gridSize = ((topRight - origin) / dx).array().ceil().cast<int>();
     LevelSet surfaceGrid(xform, gridSize, bandwidth);
 
     surfaceGrid.initFromMesh(mesh, false);
 
     // Verify the mesh falls entirely inside the grid
     bool outOfBounds = false;
+    AlignedBox3d gridBBox(Vec3d::Zero(), surfaceGrid.size().cast<double>() - Vec3d::Ones());
     for (const Vec3d& vertex : mesh.vertices())
     {
         Vec3d indexPoint = surfaceGrid.worldToIndex(vertex);
 
-        if (indexPoint[0] <= 0 || indexPoint[1] <= 0 || indexPoint[0] >= surfaceGrid.size()[0] - 1 || indexPoint[1] >= surfaceGrid.size()[1] - 1)
+        if (!gridBBox.contains(indexPoint))
             outOfBounds = true;
     }
 

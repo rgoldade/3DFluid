@@ -478,9 +478,9 @@ void LevelSet::initFromMeshImpl(const TriMesh& initialMesh, bool doResizeGrid)
 		bbox.extend(bbox.min() - Vec3d::Constant(maxPadding));
 		bbox.extend(bbox.max() + Vec3d::Constant(maxPadding));
 
-		Vec3d origin = indexToWorld(floor(worldToIndex(bbox.min())).eval());
+		Vec3d origin = indexToWorld(worldToIndex(bbox.min()).array().floor()).eval();
 		Transform xform(dx(), origin);
-		Vec3d topRight = indexToWorld(ceil(worldToIndex(bbox.max())).eval());
+		Vec3d topRight = indexToWorld(worldToIndex(bbox.max()).array().ceil().eval());
   
 		// TODO: add the ability to reset grid so we don't have ot re-allocate memory
 		myPhiGrid = ScalarGrid<double>(xform, ((topRight - origin) / dx()).cast<int>(), myIsBackgroundNegative ? -myNarrowBand : myNarrowBand);
@@ -502,9 +502,9 @@ void LevelSet::initFromMeshImpl(const TriMesh& initialMesh, bool doResizeGrid)
 		triBbox.extend(triVertices[1]);
 		triBbox.extend(triVertices[2]);
 
-        Vec3i triCeilMin = ceil(triBbox.min()).cast<int>();
-        Vec3i triFloorMin = floor(triBbox.min()).cast<int>() - Vec3i::Ones();
-        Vec3i triFloorMax = floor(triBbox.max()).cast<int>();
+        Vec3i triCeilMin = triBbox.min().array().ceil().cast<int>();
+        Vec3i triFloorMin = (triBbox.min().array().floor().matrix() - Vec3d::Ones()).cast<int>();
+        Vec3i triFloorMax = triBbox.max().array().floor().cast<int>();
 
         // Z-axis intersection tests. Iterate along an aligned set of grid edges
         // in decsending order, checking for intersections at each edge.
@@ -637,7 +637,7 @@ void LevelSet::initFromMeshImpl(const TriMesh& initialMesh, bool doResizeGrid)
 
 void LevelSet::reinitFastMarching(UniformGrid<VisitedCellLabels>& reinitializedCells)
 {
-    assert(reinitializedCells.size() == size());
+    assert((reinitializedCells.size().array() == size().array()).all());
 
     auto solveEikonal2D = [&](double Ux, double Uy) -> double
     {

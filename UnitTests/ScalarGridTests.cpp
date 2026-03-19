@@ -16,7 +16,7 @@ using namespace FluidSim3D;
 TEST(SCALAR_GRID_TESTS, DEFAULT_CONSTRUCTOR_SIZE_TEST)
 {
 	ScalarGrid<double> testGrid;
-	EXPECT_TRUE(testGrid.size() == Vec3i::Zero());
+	EXPECT_TRUE((testGrid.size().array() == Vec3i::Zero().array()).all());
 }
 
 static void testSampleType(const ScalarGridSettings::SampleType sampleType)
@@ -36,43 +36,43 @@ static void testSampleType(const ScalarGridSettings::SampleType sampleType)
 	{
 		case ScalarGridSettings::SampleType::CENTER:
 		{
-			EXPECT_TRUE(testGrid.size() == cellSize);
+			EXPECT_TRUE((testGrid.size().array() == cellSize.array()).all());
 			break;
 		}
 		case ScalarGridSettings::SampleType::XFACE:
 		{
-			EXPECT_TRUE(testGrid.size() == (cellSize + Vec3i(1, 0, 0)).eval());
+			EXPECT_TRUE((testGrid.size().array() == (cellSize + Vec3i(1, 0, 0)).array()).all());
 			break;
 		}
 		case ScalarGridSettings::SampleType::YFACE:
 		{
-			EXPECT_TRUE(testGrid.size() == (cellSize + Vec3i(0, 1, 0)).eval());
+			EXPECT_TRUE((testGrid.size().array() == (cellSize + Vec3i(0, 1, 0)).array()).all());
 			break;
 		}
         case ScalarGridSettings::SampleType::ZFACE:
 		{
-			EXPECT_TRUE(testGrid.size() == (cellSize + Vec3i(0, 0, 1)).eval());
+			EXPECT_TRUE((testGrid.size().array() == (cellSize + Vec3i(0, 0, 1)).array()).all());
 			break;
 		}
 		case ScalarGridSettings::SampleType::XEDGE:
 		{
-			EXPECT_TRUE(testGrid.size() == (cellSize + Vec3i(0, 1, 1)).eval());
+			EXPECT_TRUE((testGrid.size().array() == (cellSize + Vec3i(0, 1, 1)).array()).all());
 			break;
 		}
 		case ScalarGridSettings::SampleType::YEDGE:
 		{
-			EXPECT_TRUE(testGrid.size() == (cellSize + Vec3i(1, 0, 1)).eval());
+			EXPECT_TRUE((testGrid.size().array() == (cellSize + Vec3i(1, 0, 1)).array()).all());
 			break;
 		}
         case ScalarGridSettings::SampleType::ZEDGE:
 		{
-			EXPECT_TRUE(testGrid.size() == (cellSize + Vec3i(1, 1, 0)).eval());
+			EXPECT_TRUE((testGrid.size().array() == (cellSize + Vec3i(1, 1, 0)).array()).all());
 			break;
 		}
 
 		case ScalarGridSettings::SampleType::NODE:
 		{
-			EXPECT_TRUE(testGrid.size() == (cellSize + Vec3i::Ones()).eval());
+			EXPECT_TRUE((testGrid.size().array() == (cellSize + Vec3i::Ones()).array()).all());
 		}
 	}
 

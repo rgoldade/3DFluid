@@ -32,7 +32,7 @@ PressureProjection::PressureProjection(const LevelSet& surface,
         Vec3i cellSize = faceCount;
         --cellSize[axis];
 
-        assert(cellSize == surface.size());
+        assert((cellSize.array() == surface.size().array()).all());
     }
 #endif
 
@@ -289,7 +289,7 @@ void PressureProjection::project(VectorGrid<double>& velocity)
                     Vec3i forwardCell = faceToCell(face, axis, 1);
 
                     assert(myCutCellWeights(face, axis) > 0);
-                    assert(backwardCell[axis] >= 0 && forwardCell[axis] <= mySurface.size()[axis]);
+                    assert(backwardCell[axis] >= 0 && forwardCell[axis] < mySurface.size()[axis]);
                     assert(materialCellLabels(backwardCell) == MaterialLabels::LIQUID_CELL ||
                             materialCellLabels(forwardCell) == MaterialLabels::LIQUID_CELL);
 

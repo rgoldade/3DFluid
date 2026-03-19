@@ -15,7 +15,7 @@ void copyGridToVector(VectorXd& vector,
 						const UniformGrid<int>& solverIndices,
 						const UniformGrid<MGCellLabels>& cellLabels)
 {
-	assert(vectorGrid.size() == solverIndices.size() && solverIndices.size() == cellLabels.size());
+	assert((vectorGrid.size().array() == solverIndices.size().array()).all() && (solverIndices.size().array() == cellLabels.size().array()).all());
 
 	tbb::parallel_for(tbb::blocked_range<int>(0, cellLabels.voxelCount()), [&](const tbb::blocked_range<int>& range)
 	{
@@ -46,8 +46,8 @@ void copyVectorToGrid(UniformGrid<double>& vectorGrid,
 						const UniformGrid<int>& solverIndices,
 						const UniformGrid<MGCellLabels>& cellLabels)
 {
-	assert(vectorGrid.size() == solverIndices.size() &&
-		solverIndices.size() == cellLabels.size());
+	assert((vectorGrid.size().array() == solverIndices.size().array()).all() &&
+		(solverIndices.size().array() == cellLabels.size().array()).all());
 
 	tbb::parallel_for(tbb::blocked_range<int>(0, cellLabels.voxelCount()), [&](const tbb::blocked_range<int>& range)
 	{
@@ -151,7 +151,7 @@ GeometricMultigridPoissonSolver::GeometricMultigridPoissonSolver(const UniformGr
 		}
 		assert(GeometricMultigridOperators::unitTestCoarsening(myDomainLabels[level], myDomainLabels[level - 1]));
 		assert(GeometricMultigridOperators::unitTestBoundaryCells(myDomainLabels[level]));
-		assert(GeometricMultigridOperators::unitTestExteriorCells(myDomainLabels[0]));
+		assert(GeometricMultigridOperators::unitTestExteriorCells(myDomainLabels[level]));
 	}
 
 	myDx.resize(myMGLevels);
@@ -253,7 +253,7 @@ void GeometricMultigridPoissonSolver::applyMGVCycle(UniformGrid<double>& fineSol
 {
 	using namespace GeometricMultigridOperators;
 
-	assert(fineSolutionGrid.size() == fineRHSGrid.size() && fineRHSGrid.size() == myDomainLabels[0].size());
+	assert((fineSolutionGrid.size().array() == fineRHSGrid.size().array()).all() && (fineRHSGrid.size().array() == myDomainLabels[0].size().array()).all());
 
 	// If there is an initial guess in the solution vector, copy it locally
 	if (!useInitialGuess)

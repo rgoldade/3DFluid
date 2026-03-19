@@ -43,9 +43,9 @@ public:
 
     void disableInitialGuess() { myUseInitialGuessPressure = false; }
 
-    ScalarGrid<double> getPressureGrid() { return myPressure; }
+    const ScalarGrid<double>& getPressureGrid() const { return myPressure; }
 
-    const VectorGrid<VisitedCellLabels>& getValidFaces() { return myValidFaces; }
+    const VectorGrid<VisitedCellLabels>& getValidFaces() const { return myValidFaces; }
 
 private:
     const VectorGrid<double>& mySolidVelocity;

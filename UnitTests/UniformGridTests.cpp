@@ -18,7 +18,7 @@ static void fillUniformGrid(const ValFunc& valFunc, UniformGrid<T>& grid)
 TEST(UNIFORM_GRID_TESTS, DEFAULT_CONSTRUCTOR_SIZE_TEST)
 {
 	UniformGrid<int> testGrid;
-	EXPECT_TRUE(testGrid.size() == Vec3i::Zero());
+	EXPECT_TRUE((testGrid.size().array() == Vec3i::Zero().array()).all());
 }
 
 TEST(UNIFORM_GRID_TESTS, CONSTRUCTOR_SIZE_TEST)
@@ -26,7 +26,7 @@ TEST(UNIFORM_GRID_TESTS, CONSTRUCTOR_SIZE_TEST)
 	Vec3i size(10, 20, 30);
 	UniformGrid<int> testGrid(size);
 
-	EXPECT_TRUE(testGrid.size() == size);
+	EXPECT_TRUE((testGrid.size().array() == size.array()).all());
 }
 
 TEST(UNIFORM_GRID_TESTS, CONSTRUCTOR_SIZE_AND_VALUE_TEST)
@@ -35,7 +35,7 @@ TEST(UNIFORM_GRID_TESTS, CONSTRUCTOR_SIZE_AND_VALUE_TEST)
     int val = 10;
 	UniformGrid<int> testGrid(size, val);
 
-	EXPECT_TRUE(testGrid.size() == size);
+	EXPECT_TRUE((testGrid.size().array() == size.array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), testGrid.size(), [&](const Vec3i& cell)
 	{
@@ -73,7 +73,7 @@ TEST(UNIFORM_GRID_TESTS, CLEAR_TEST)
 
 	testGrid.clear();
 	EXPECT_TRUE(testGrid.empty());
-	EXPECT_TRUE(testGrid.size() == Vec3i::Zero());
+	EXPECT_TRUE((testGrid.size().array() == Vec3i::Zero().array()).all());
 }
 
 TEST(UNIFORM_GRID_TESTS, RESIZE_LARGER_TEST)
@@ -94,7 +94,7 @@ TEST(UNIFORM_GRID_TESTS, RESIZE_LARGER_TEST)
 	testGrid.resize(expandSize);
 	fillUniformGrid<double>(valFunc, testGrid);
 
-	EXPECT_TRUE(testGrid.size() == expandSize);
+	EXPECT_TRUE((testGrid.size().array() == expandSize.array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), testGrid.size(), [&](const Vec3i& cell)
 	{
@@ -120,7 +120,7 @@ TEST(UNIFORM_GRID_TESTS, RESIZE_SMALLER_TEST)
 	testGrid.resize(shrinkSize);
 	fillUniformGrid<double>(valFunc, testGrid);
 
-	EXPECT_TRUE(testGrid.size() == shrinkSize);
+	EXPECT_TRUE((testGrid.size().array() == shrinkSize.array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), testGrid.size(), [&](const Vec3i& cell)
 	{
@@ -139,7 +139,7 @@ TEST(UNIFORM_GRID_TESTS, RESIZE_VALUE_TEST)
 	double expandValue = 100.;
 	testGrid.resize(expandSize, expandValue);
 
-	EXPECT_TRUE(testGrid.size() == expandSize);
+	EXPECT_TRUE((testGrid.size().array() == expandSize.array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), testGrid.size(), [&](const Vec3i& cell)
 	{
@@ -156,7 +156,7 @@ TEST(UNIFORM_GRID_TESTS, RESET_TEST)
 	double resetValue = 100.;
 	testGrid.reset(resetValue);
 
-	EXPECT_TRUE(testGrid.size() == size);
+	EXPECT_TRUE((testGrid.size().array() == size.array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), testGrid.size(), [&](const Vec3i& cell)
 	{
@@ -179,14 +179,14 @@ TEST(UNIFORM_GRID_TESTS, FLATTEN_UNFLATTEN_TEST)
 	{
 		Vec3i size = (20. * (Vec3d::Random() + Vec3d::Ones())).cast<int>();
 
-		if (size[0] <= 0 || size[1] <= 0 && size[2] <= 0)
+		if (size[0] <= 0 || size[1] <= 0 || size[2] <= 0)
 			continue;
 
 		UniformGrid<double> testGrid(size);
 
 		forEachVoxelRange(Vec3i::Zero(), testGrid.size(), [&](const Vec3i& cell)
-		{
-			EXPECT_TRUE(testGrid.unflatten(testGrid.flatten(cell)) == cell);
+	{
+			EXPECT_TRUE((testGrid.unflatten(testGrid.flatten(cell)).array() == cell.array()).all());
 		});
 	}
 }
@@ -224,7 +224,7 @@ TEST(UNIFORM_GRID_TESTS, COPY_GRID_TEST)
 
 	UniformGrid<int> copyGrid = testGrid;
 
-	EXPECT_TRUE(testGrid.size() == copyGrid.size());
+	EXPECT_TRUE((testGrid.size().array() == copyGrid.size().array()).all());
 
 	forEachVoxelRange(Vec3i::Zero(), testGrid.size(), [&](const Vec3i& cell)
 	{

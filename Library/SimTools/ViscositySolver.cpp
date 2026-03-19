@@ -31,7 +31,7 @@ void ViscositySolver(double dt,
         Vec3i faceSize = velocity.size(axis);
         --faceSize[axis];
 
-        assert(faceSize == surface.size());
+        assert((faceSize.array() == surface.size().array()).all());
     }
 
     int volumeSamples = 3;

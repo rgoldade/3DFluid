@@ -29,7 +29,7 @@ void solveGeometricConjugateGradient(UniformGrid<double>& solutionGrid,
 										const int maxIterations,
 										bool verbose = false)
 {
-	assert(solutionGrid.size() == rhsGrid.size());
+	assert((solutionGrid.size().array() == rhsGrid.size().array()).all());
 
 	double rhsNorm2 = squaredNormFunctor(rhsGrid);
 	if (rhsNorm2 == 0)

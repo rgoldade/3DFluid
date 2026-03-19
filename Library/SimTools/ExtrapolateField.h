@@ -32,7 +32,7 @@ template <typename Field>
 void extrapolateField(Field& field, UniformGrid<VisitedCellLabels> finishedCellMask, int bandwidth)
 {
     assert(bandwidth > 0);
-    assert(field.size() == finishedCellMask.size());
+    assert((field.size().array() == finishedCellMask.size().array()).all());
 
     // Build an initial list of cells adjacent to finished cells in the provided mask grid
     VecVec3i toVisitCells;

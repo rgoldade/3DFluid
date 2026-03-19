@@ -238,7 +238,7 @@ TEST(GEOMETRIC_MULTIGRID_TESTS, EXTERIOR_CELLS_TEST)
 static void testCoarsening(const UniformGrid<CellLabels>& coarseCellLabels, const UniformGrid<CellLabels>& fineCellLabels)
 {
     // The coarse cell grid must be exactly have the size of the fine cell grid.
-    ASSERT_TRUE((2 * coarseCellLabels.size()).eval() == fineCellLabels.size());
+    ASSERT_TRUE(((2 * coarseCellLabels.size()).eval().array() == fineCellLabels.size().array()).all());
 
     ASSERT_TRUE(coarseCellLabels.size()[0] % 2 == 0);
     ASSERT_TRUE(coarseCellLabels.size()[1] % 2 == 0);
@@ -791,7 +791,7 @@ static void symmetryTest(bool useComplexDomain, bool useSolidSphere, int gridSiz
                         }
                     }
 
-                    sparseElements.emplace_back(index, index, 4. * gridScale);
+                    sparseElements.emplace_back(index, index, 6. * gridScale);
                 }
                 else if (coarseDomainLabels(cell) == CellLabels::BOUNDARY_CELL)
                 {

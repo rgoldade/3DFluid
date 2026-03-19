@@ -37,9 +37,7 @@ public:
 
     bool operator!=(const Transform& rhs) const
     {
-        if (myDx == rhs.myDx) return false;
-        if (myOffset == rhs.myOffset) return false;
-        return true;
+        return !(*this == rhs);
     }
 
 private:

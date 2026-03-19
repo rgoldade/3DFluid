@@ -55,7 +55,6 @@ int main()
     auto simulator = std::make_unique<EulerianLiquidSimulator>(xform, gridSize, 5);
     simulator->setLiquidSurface(seedLiquidSurface);
     simulator->setSolidSurface(combinedSolidSurface);
-    simulator->setLiquidSurface(seedLiquidSurface);
     simulator->setViscosity(1.);
 
     auto solidVelocityField = std::make_unique<CircularField>(center, 1, Axis::ZAXIS);

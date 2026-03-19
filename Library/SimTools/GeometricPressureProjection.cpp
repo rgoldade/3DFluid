@@ -36,7 +36,7 @@ GeometricPressureProjection::GeometricPressureProjection(const LevelSet& surface
 		Vec3i cellSize = faceCount;
 		--cellSize[axis];
 
-		assert(cellSize == surface.size());
+		assert((cellSize.array() == surface.size().array()).all());
 	}
 #endif
 
@@ -357,7 +357,7 @@ void GeometricPressureProjection::project(VectorGrid<double>& velocity,
 
 	auto diagonalPreconditioner = [&](UniformGrid<double>& solutionGrid, const UniformGrid<double>& rhsGrid)
 	{
-		assert(solutionGrid.size() == rhsGrid.size());
+		assert((solutionGrid.size().array() == rhsGrid.size().array()).all());
 		tbb::parallel_for(tbb::blocked_range<int>(0, mgDomainCellLabels.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 		{
 			for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
@@ -375,7 +375,7 @@ void GeometricPressureProjection::project(VectorGrid<double>& velocity,
 
 	auto matrixVectorMultiply = [&](UniformGrid<double>& destinationGrid, const UniformGrid<double>& sourceGrid)
 	{
-		assert(destinationGrid.size() == sourceGrid.size() && sourceGrid.size() == mgDomainCellLabels.size());
+		assert((destinationGrid.size().array() == sourceGrid.size().array()).all() && (sourceGrid.size().array() == mgDomainCellLabels.size().array()).all());
 
 		// Matrix-vector multiplication
 		GeometricMultigridOperators::applyPoissonMatrix(destinationGrid, sourceGrid, mgDomainCellLabels, 1., &mgBoundaryWeights);
@@ -386,28 +386,28 @@ void GeometricPressureProjection::project(VectorGrid<double>& velocity,
 
 	auto multiGridPreconditioner = [&](UniformGrid<double>& destinationGrid, const UniformGrid<double>& sourceGrid)
 	{
-		assert(destinationGrid.size() == sourceGrid.size() && sourceGrid.size() == mgDomainCellLabels.size());
+		assert((destinationGrid.size().array() == sourceGrid.size().array()).all() && (sourceGrid.size().array() == mgDomainCellLabels.size().array()).all());
 
 		mgPreconditioner.applyMGVCycle(destinationGrid, sourceGrid);
 	};
 
 	auto dotProduct = [&](const UniformGrid<double>& grid0, const UniformGrid<double>& grid1)
 	{
-		assert(grid0.size() == grid1.size() && grid1.size() == mgDomainCellLabels.size());
+		assert((grid0.size().array() == grid1.size().array()).all() && (grid1.size().array() == mgDomainCellLabels.size().array()).all());
 
 		return GeometricMultigridOperators::dotProduct(grid0, grid1, mgDomainCellLabels);
 	};
 
 	auto squaredL2Norm = [&](const UniformGrid<double>& grid)
 	{
-		assert(grid.size() == mgDomainCellLabels.size());
+		assert((grid.size().array() == mgDomainCellLabels.size().array()).all());
 
 		return GeometricMultigridOperators::squaredl2Norm(grid, mgDomainCellLabels);
 	};
 
 	auto addToVector = [&](UniformGrid<double>& destination, const UniformGrid<double>& scaledSource, const double scale)
 	{
-		assert(destination.size() == scaledSource.size() && scaledSource.size() == mgDomainCellLabels.size());
+		assert((destination.size().array() == scaledSource.size().array()).all() && (scaledSource.size().array() == mgDomainCellLabels.size().array()).all());
 
 		GeometricMultigridOperators::addToVector(destination, scaledSource, mgDomainCellLabels, scale);
 	};
@@ -417,9 +417,9 @@ void GeometricPressureProjection::project(VectorGrid<double>& velocity,
 		const UniformGrid<double>& scaledSource,
 		const double scale)
 	{
-		assert(destination.size() == unscaledSource.size() &&
-			unscaledSource.size() == scaledSource.size() &&
-			scaledSource.size() == mgDomainCellLabels.size());
+		assert((destination.size().array() == unscaledSource.size().array()).all() &&
+			(unscaledSource.size().array() == scaledSource.size().array()).all() &&
+			(scaledSource.size().array() == mgDomainCellLabels.size().array()).all());
 
 		GeometricMultigridOperators::addVectors(destination, unscaledSource, scaledSource, mgDomainCellLabels, scale);
 	};
@@ -452,7 +452,7 @@ void GeometricPressureProjection::project(VectorGrid<double>& velocity,
 	{
 		UniformGrid<double> residualGrid(mgDomainCellLabels.size(), 0);
 
-		GeometricMultigridOperators::computePoissonResidual(residualGrid, mgSolutionGrid, mgRHSGrid, mgDomainCellLabels, 1.);
+		GeometricMultigridOperators::computePoissonResidual(residualGrid, mgSolutionGrid, mgRHSGrid, mgDomainCellLabels, 1., &mgBoundaryWeights);
 
 		std::cout << "L-infinity error of solution: " << GeometricMultigridOperators::lInfinityNorm(residualGrid, mgDomainCellLabels) << std::endl;
 	}

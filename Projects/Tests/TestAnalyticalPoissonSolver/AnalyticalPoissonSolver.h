@@ -35,7 +35,7 @@ private:
 };
 
 template <typename RHS, typename Solution>
-double AnalyticalPoissonSolver::solve(const RHS& rhsFuction, const Solution& solutionFunction)
+double AnalyticalPoissonSolver::solve(const RHS& rhsFunction, const Solution& solutionFunction)
 {
     UniformGrid<int> solvableCells(myPoissonGrid.size(), -1);
 
@@ -62,7 +62,7 @@ double AnalyticalPoissonSolver::solve(const RHS& rhsFuction, const Solution& sol
         // Build RHS
         Vec3d gridPoint = myPoissonGrid.indexToWorld(cell.cast<double>());
 
-        rhsVector(row) = -coeff * rhsFuction(gridPoint);
+        rhsVector(row) = -coeff * rhsFunction(gridPoint);
 
         for (auto axis : {0, 1, 2})
             for (auto direction : {0, 1})

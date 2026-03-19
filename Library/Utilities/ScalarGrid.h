@@ -283,7 +283,7 @@ Vec3t<T> ScalarGrid<T>::triLerpGradient(const Vec3d& samplePoint, bool isIndexSp
 	{
 		case BorderType::ZERO:
 		{
-			for (int axis : {0, 1, 1})
+			for (int axis : {0, 1, 2})
 			{
 				if (indexPoint[axis] < 0 || indexPoint[axis] > double(this->mySize[axis] - 1))
 					return Vec3t<T>::Zero();
@@ -509,8 +509,8 @@ void ScalarGrid<T>::drawSupersampledValues(const std::string& label, const Vec3d
     T minSample = minMaxPair.first;
     T maxSample = minMaxPair.second;
 
-    Vec3i startIndex(ceil(start).cast<int>());
-    Vec3i endIndex(floor(end).cast<int>());
+    Vec3i startIndex(start.array().ceil().cast<int>());
+    Vec3i endIndex(end.array().floor().cast<int>());
 
     VecVec3d pts;
     std::vector<glm::vec3> colors;

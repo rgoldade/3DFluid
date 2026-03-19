@@ -96,41 +96,6 @@ using VectorXt = Eigen::Matrix<T, Eigen::Dynamic, 1>;
 
 using SparseMatrix = Eigen::SparseMatrix<double>;
 
-template<typename T, int N>
-VecXt<T, N> clamp(const VecXt<T, N>& vIn, const VecXt<T, N>& vMin, const VecXt<T, N>& vMax)
-{
-	VecXt<T, N> vOut;
-
-	for (int i = 0; i < vIn.rows(); ++i)
-		vOut[i] = std::clamp(vIn[i], vMin[i], vMax[i]);
-
-	return vOut;
-}
-
-template<typename T, int N>
-VecXt<T, N> ceil(const VecXt<T, N>& vIn)
-{
-	return vIn.array().ceil().matrix();
-}
-
-template<typename T, int N>
-VecXt<T, N> floor(const VecXt<T, N>& vIn)
-{
-	return vIn.array().floor().matrix();
-}
-
-template<typename T, int N>
-bool operator==(const VecXt<T, N>& v0, const VecXt<T, N>& v1)
-{
-	return (v0.array() == v1.array()).all();
-}
-
-template<typename T, int N>
-bool operator!=(const VecXt<T, N>& v0, const VecXt<T, N>& v1)
-{
-	return (v0.array() != v1.array()).all();
-}
-
 template<typename RealType>
 bool isNearlyEqual(const RealType a, const RealType b, const double tolerance = 1e-5, const bool useRelative = true)
 {
@@ -244,7 +209,8 @@ Vec3t<S> trilerpGradient(const S& value000, const S& value100, const S& value010
 template <typename S, typename T>
 S cubicInterp(const S& value_1, const S& value0, const S& value1, const S& value2, const T& fx)
 {
-    T sqrfx = sqr(fx), cubefx = cube(fx);
+    T sqrfx = fx * fx;
+    T cubefx = sqrfx * fx;
     return T(0.5) * ((-cubefx + T(2.0) * sqrfx - fx) * value_1 + (T(3.0) * cubefx - T(5.0) * sqrfx + T(2.0)) * value0 +
                      (-T(3.0) * cubefx + T(4.0) * sqrfx + fx) * value1 + (cubefx - sqrfx) * value2);
 };

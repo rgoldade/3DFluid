@@ -124,8 +124,9 @@ std::pair<Vec3i, int> buildCustomExpandedDomainLabels(UniformGrid<CellLabels>& e
 	// for each v-cycle.
 
 	// Cap MG levels at 4 voxels in the smallest dimension
-	double minLog = std::min(std::log2(double(baseCustomLabels.size()[0])),
-							std::log2(double(baseCustomLabels.size()[1])));
+	double minLog = std::min({std::log2(double(baseCustomLabels.size()[0])),
+							std::log2(double(baseCustomLabels.size()[1])),
+							std::log2(double(baseCustomLabels.size()[2]))});
 
 	int mgLevels = std::ceil(minLog) - std::log2(double(2));
 
@@ -143,7 +144,7 @@ std::pair<Vec3i, int> buildCustomExpandedDomainLabels(UniformGrid<CellLabels>& e
 		expandedGridSize[axis] = std::exp2(logSize);
 	}
 
-	Vec3i exteriorOffset = Vec3i(exteriorPadding);
+	Vec3i exteriorOffset = Vec3i::Constant(exteriorPadding);
 
 	expandedDomainCellLabels.resize(expandedGridSize, CellLabels::EXTERIOR_CELL);
 
