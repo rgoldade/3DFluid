@@ -88,7 +88,7 @@ public:
 
     void reset(const T& value)
     {
-        myGrid.array() = value;;
+        myGrid.array() = value;
     }
 
     const Vec3i& size() const { return mySize; }

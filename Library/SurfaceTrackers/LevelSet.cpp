@@ -357,7 +357,7 @@ Vec3d LevelSet::findSurface(const Vec3d& worldPoint, int iterationLimit, double 
 {
     assert(iterationLimit >= 0);
 
-    double phi = myPhiGrid.triLerp(worldPoint);
+    double phi = myPhiGrid.triCubicInterp(worldPoint);
 
     double epsilon = tolerance * dx();
     Vec3d tempPoint = worldPoint;
@@ -367,8 +367,8 @@ Vec3d LevelSet::findSurface(const Vec3d& worldPoint, int iterationLimit, double 
     {
         while (std::fabs(phi) > epsilon && iterationCount < iterationLimit)
         {
-            tempPoint -= phi * .8 * normal(tempPoint);
-            phi = myPhiGrid.triLerp(tempPoint);
+            tempPoint -= phi * .8 * normal(tempPoint, false);
+            phi = myPhiGrid.triCubicInterp(tempPoint);
             ++iterationCount;
         }
     }

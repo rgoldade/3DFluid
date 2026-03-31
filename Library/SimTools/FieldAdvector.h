@@ -20,9 +20,12 @@
 namespace FluidSim3D
 {
 
+enum class InterpolationOrder { LINEAR, CUBIC };
+
 template <typename Field, typename VelocityField>
 void advectField(double dt, Field& destinationField, const Field& sourceField, const VelocityField& velocity,
-                 IntegrationOrder order, const UniformGrid<VisitedCellLabels>* activeCells = nullptr)
+                 IntegrationOrder order, InterpolationOrder interpOrder = InterpolationOrder::LINEAR,
+                 const UniformGrid<VisitedCellLabels>* activeCells = nullptr)
 {
     assert(&destinationField != &sourceField);
     assert(destinationField.isGridMatched(sourceField));
@@ -43,7 +46,18 @@ void advectField(double dt, Field& destinationField, const Field& sourceField, c
                 Vec3d worldPoint = sourceField.indexToWorld(cell.cast<double>());
                 worldPoint = Integrator(-dt, worldPoint, velocity, order);
 
-                destinationField(cell) = sourceField.triLerp(worldPoint);
+                switch (interpOrder)
+                {
+                case InterpolationOrder::LINEAR:
+                    destinationField(cell) = sourceField.triLerp(worldPoint);
+                    break;
+                case InterpolationOrder::CUBIC:
+                    destinationField(cell) = sourceField.triCubicInterp(worldPoint, false, true);
+                    break;
+                default:
+                    assert(false);
+                    break;
+                }
             }
         }
     });

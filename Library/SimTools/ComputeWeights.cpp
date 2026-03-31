@@ -200,8 +200,8 @@ void computeSupersampleVolumes(ScalarGrid<double>& volumes, const LevelSet& surf
 {
     assert(samples > 0);
 
-    double dx = 1. / double(samples);
-    double sampleVolume = std::pow(dx, 3);
+    double sampleDx = 1. / double(samples);
+    double sampleCount = double(samples * samples * samples);
 
     tbb::parallel_for(tbb::blocked_range<int>(0, volumes.voxelCount(), tbbHeavyGrainSize), [&](const tbb::blocked_range<int>& range)
     {
@@ -219,22 +219,26 @@ void computeSupersampleVolumes(ScalarGrid<double>& volumes, const LevelSet& surf
                 continue;
             }
 
-            Vec3d start = sampleCoord.cast<double>() - Vec3d::Constant(.5 - .5 * dx);
-            Vec3d end = sampleCoord.cast<double>() + Vec3d::Constant(.5);
+            Vec3d start = sampleCoord.cast<double>() - .5 * Vec3d::Ones() + .5 * Vec3d::Constant(sampleDx);
 
-            Vec3d sample;
-            double insideMaterialCount = 0;
+            int insideMaterialCount = 0;
 
-            for (sample[0] = start[0]; sample[0] <= end[0]; sample[0] += dx)
-                for (sample[1] = start[1]; sample[1] <= end[1]; sample[1] += dx)
-                    for (sample[2] = start[2]; sample[2] <= end[2]; sample[2] += dx)
+            for (int i = 0; i < samples; ++i)
+                for (int j = 0; j < samples; ++j)
+                    for (int k = 0; k < samples; ++k)
                     {
+                        Vec3d sample = start + Vec3d(i * sampleDx, j * sampleDx, k * sampleDx);
                         Vec3d worldSamplePoint = volumes.indexToWorld(sample);
 
                         if (surface.triLerp(worldSamplePoint) <= 0.) ++insideMaterialCount;
                     }
 
-            if (insideMaterialCount > 0) volumes(sampleCoord) = insideMaterialCount * sampleVolume;
+            if (insideMaterialCount > 0)
+            {
+                double supersampledVolume = double(insideMaterialCount) / sampleCount;
+                supersampledVolume = std::clamp(supersampledVolume, 0., 1.);
+                volumes(sampleCoord) = supersampledVolume;
+            }
         }
     });
 }
@@ -245,7 +249,8 @@ VectorGrid<double> computeSupersampledFaceVolumes(const LevelSet& surface, int s
 
     VectorGrid<double> volumes(surface.xform(), surface.size(), Vec3d::Zero(), VectorGridSettings::SampleType::STAGGERED);
 
-    double dx = 1. / double(samples);
+    double sampleDx = 1. / double(samples);
+    double sampleCount = double(samples * samples * samples);
 
     for (int axis : {0, 1, 2})
     {
@@ -258,31 +263,32 @@ VectorGrid<double> computeSupersampledFaceVolumes(const LevelSet& surface, int s
                 double sdf = surface.triLerp(volumes.indexToWorld(sampleCoord.cast<double>(), axis));
                 if (sdf > 2. * surface.dx())
                     continue;
-                if (sdf < -2 * surface.dx())
+                if (sdf < -2. * surface.dx())
                 {
                     volumes(sampleCoord, axis) = 1;
                     continue;
                 }
 
-                Vec3d start = sampleCoord.cast<double>() - Vec3d::Constant(.5 - .5 * dx);
-                Vec3d end = sampleCoord.cast<double>() + Vec3d::Constant(.5);
+                Vec3d start = sampleCoord.cast<double>() - .5 * Vec3d::Ones() + .5 * Vec3d::Constant(sampleDx);
 
-                Vec3d sample;
-                double insideMaterialCount = 0;
-                int sampleCount = 0;
+                int insideMaterialCount = 0;
 
-                for (sample[0] = start[0]; sample[0] <= end[0]; sample[0] += dx)
-                    for (sample[1] = start[1]; sample[1] <= end[1]; sample[1] += dx)
-                        for (sample[2] = start[2]; sample[2] <= end[2]; sample[2] += dx)
+                for (int i = 0; i < samples; ++i)
+                    for (int j = 0; j < samples; ++j)
+                        for (int k = 0; k < samples; ++k)
                         {
+                            Vec3d sample = start + Vec3d(i * sampleDx, j * sampleDx, k * sampleDx);
                             Vec3d worldSample = volumes.indexToWorld(sample, axis);
 
                             if (surface.triLerp(worldSample) <= 0.) ++insideMaterialCount;
-
-                            ++sampleCount;
                         }
 
-                if (insideMaterialCount > 0) volumes(sampleCoord, axis) = insideMaterialCount / double(sampleCount);
+                if (insideMaterialCount > 0)
+                {
+                    double supersampledVolume = double(insideMaterialCount) / sampleCount;
+                    supersampledVolume = std::clamp(supersampledVolume, 0., 1.);
+                    volumes(sampleCoord, axis) = supersampledVolume;
+                }
             }
         });
     }

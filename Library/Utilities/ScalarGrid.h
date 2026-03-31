@@ -60,7 +60,7 @@ class ScalarGrid : public UniformGrid<T>
     using SampleType = ScalarGridSettings::SampleType;
 
 public:
-    ScalarGrid() : myXform(1., Vec3d::Zero()), myGridSize(Vec3i::Zero()), UniformGrid<T>() {}
+    ScalarGrid() : UniformGrid<T>(), myXform(1., Vec3d::Zero()), myGridSize(Vec3i::Zero()), mySampleType(SampleType::CENTER), myBorderType(BorderType::CLAMP), myCellOffset(Vec3d::Zero()) {}
 
     ScalarGrid(const Transform& xform, const Vec3i& size, SampleType sampleType = SampleType::CENTER,
                BorderType borderType = BorderType::CLAMP)
@@ -108,6 +108,10 @@ public:
             case SampleType::NODE:
                 myCellOffset = Vec3d::Zero();
                 this->resize(size + Vec3i::Ones(), initialValue);
+                break;
+            default:
+                assert(false);
+                break;
         }
     }
 
@@ -159,6 +163,14 @@ public:
     T triLerp(const Vec3d& samplePoint, bool isIndexSpace = false) const;
 
     Vec3t<T> triLerpGradient(const Vec3d& worldPoint, bool isIndexSpace = false) const;
+
+    T triCubicInterp(double x, double y, double z, bool isIndexSpace = false, bool applyClamp = false) const
+    {
+        return triCubicInterp(Vec3d(x, y, z), isIndexSpace, applyClamp);
+    }
+    T triCubicInterp(const Vec3d& samplePoint, bool isIndexSpace = false, bool applyClamp = false) const;
+
+    Vec3t<T> triCubicGradient(const Vec3d& samplePoint, bool isIndexSpace = false) const;
 
     // Converters between world space and local index space
     Vec3d indexToWorld(const Vec3d& indexPoint) const { return myXform.indexToWorld(indexPoint + myCellOffset); }
@@ -337,6 +349,166 @@ Vec3t<T> ScalarGrid<T>::triLerpGradientLocal(const Vec3d& samplePoint) const
 }
 
 template <typename T>
+T ScalarGrid<T>::triCubicInterp(const Vec3d& samplePoint, bool isIndexSpace, bool applyClamp) const
+{
+    Vec3d indexPoint = isIndexSpace ? samplePoint : worldToIndex(samplePoint);
+
+    Vec3i floorPoint = indexPoint.array().floor().cast<int>();
+
+    // Revert to linear interpolation near the boundaries
+    if (floorPoint[0] < 1 || floorPoint[0] >= this->mySize[0] - 2 ||
+        floorPoint[1] < 1 || floorPoint[1] >= this->mySize[1] - 2 ||
+        floorPoint[2] < 1 || floorPoint[2] >= this->mySize[2] - 2)
+        return triLerp(indexPoint, true);
+
+    Vec3d dx = indexPoint - floorPoint.cast<double>();
+    dx = dx.cwiseMax(Vec3d::Zero()).cwiseMin(Vec3d::Ones());
+
+    std::array<T, 4> zInterp;
+    for (int zOffset = -1; zOffset <= 2; ++zOffset)
+    {
+        int z = floorPoint[2] + zOffset;
+
+        std::array<T, 4> yInterp;
+        for (int yOffset = -1; yOffset <= 2; ++yOffset)
+        {
+            int y = floorPoint[1] + yOffset;
+
+            T p_1 = (*this)(floorPoint[0] - 1, y, z);
+            T p0 = (*this)(floorPoint[0], y, z);
+            T p1 = (*this)(floorPoint[0] + 1, y, z);
+            T p2 = (*this)(floorPoint[0] + 2, y, z);
+
+            yInterp[yOffset + 1] = cubicInterp(p_1, p0, p1, p2, dx[0]);
+        }
+
+        zInterp[zOffset + 1] = cubicInterp(yInterp[0], yInterp[1], yInterp[2], yInterp[3], dx[1]);
+    }
+
+    T cubicValue = cubicInterp(zInterp[0], zInterp[1], zInterp[2], zInterp[3], dx[2]);
+
+    if (applyClamp)
+    {
+        T v000 = (*this)(floorPoint[0], floorPoint[1], floorPoint[2]);
+        T v100 = (*this)(floorPoint[0] + 1, floorPoint[1], floorPoint[2]);
+        T v010 = (*this)(floorPoint[0], floorPoint[1] + 1, floorPoint[2]);
+        T v110 = (*this)(floorPoint[0] + 1, floorPoint[1] + 1, floorPoint[2]);
+        T v001 = (*this)(floorPoint[0], floorPoint[1], floorPoint[2] + 1);
+        T v101 = (*this)(floorPoint[0] + 1, floorPoint[1], floorPoint[2] + 1);
+        T v011 = (*this)(floorPoint[0], floorPoint[1] + 1, floorPoint[2] + 1);
+        T v111 = (*this)(floorPoint[0] + 1, floorPoint[1] + 1, floorPoint[2] + 1);
+
+        T clampMin = std::min({v000, v100, v010, v110, v001, v101, v011, v111});
+        T clampMax = std::max({v000, v100, v010, v110, v001, v101, v011, v111});
+
+        cubicValue = std::clamp(cubicValue, clampMin, clampMax);
+    }
+
+    return cubicValue;
+}
+
+template <typename T>
+Vec3t<T> ScalarGrid<T>::triCubicGradient(const Vec3d& samplePoint, bool isIndexSpace) const
+{
+    Vec3d indexPoint = isIndexSpace ? samplePoint : worldToIndex(samplePoint);
+
+    Vec3i floorPoint = indexPoint.array().floor().cast<int>();
+
+    // Revert to linear interpolation near the boundaries
+    if (floorPoint[0] < 1 || floorPoint[0] >= this->mySize[0] - 2 ||
+        floorPoint[1] < 1 || floorPoint[1] >= this->mySize[1] - 2 ||
+        floorPoint[2] < 1 || floorPoint[2] >= this->mySize[2] - 2)
+        return triLerpGradient(indexPoint, true);
+
+    Vec3d deltaX = indexPoint - floorPoint.cast<double>();
+
+    for (int axis : {0, 1, 2})
+        assert(deltaX[axis] >= 0 && deltaX[axis] <= 1);
+
+    Vec3t<T> grad;
+
+    // Compute X-gradient: differentiate in x, interpolate in y and z
+    {
+        std::array<T, 4> zInterp;
+        for (int zOffset = -1; zOffset <= 2; ++zOffset)
+        {
+            int z = floorPoint[2] + zOffset;
+
+            std::array<T, 4> yInterp;
+            for (int yOffset = -1; yOffset <= 2; ++yOffset)
+            {
+                int y = floorPoint[1] + yOffset;
+
+                T p_1 = (*this)(floorPoint[0] - 1, y, z);
+                T p0 = (*this)(floorPoint[0], y, z);
+                T p1 = (*this)(floorPoint[0] + 1, y, z);
+                T p2 = (*this)(floorPoint[0] + 2, y, z);
+
+                yInterp[yOffset + 1] = cubicInterpGradient(p_1, p0, p1, p2, deltaX[0]);
+            }
+
+            zInterp[zOffset + 1] = cubicInterp(yInterp[0], yInterp[1], yInterp[2], yInterp[3], deltaX[1]);
+        }
+
+        grad[0] = cubicInterp(zInterp[0], zInterp[1], zInterp[2], zInterp[3], deltaX[2]);
+    }
+
+    // Compute Y-gradient: interpolate in x, differentiate in y, interpolate in z
+    {
+        std::array<T, 4> zInterp;
+        for (int zOffset = -1; zOffset <= 2; ++zOffset)
+        {
+            int z = floorPoint[2] + zOffset;
+
+            std::array<T, 4> xInterp;
+            for (int xOffset = -1; xOffset <= 2; ++xOffset)
+            {
+                int x = floorPoint[0] + xOffset;
+
+                T p_1 = (*this)(x, floorPoint[1] - 1, z);
+                T p0 = (*this)(x, floorPoint[1], z);
+                T p1 = (*this)(x, floorPoint[1] + 1, z);
+                T p2 = (*this)(x, floorPoint[1] + 2, z);
+
+                xInterp[xOffset + 1] = cubicInterpGradient(p_1, p0, p1, p2, deltaX[1]);
+            }
+
+            zInterp[zOffset + 1] = cubicInterp(xInterp[0], xInterp[1], xInterp[2], xInterp[3], deltaX[0]);
+        }
+
+        grad[1] = cubicInterp(zInterp[0], zInterp[1], zInterp[2], zInterp[3], deltaX[2]);
+    }
+
+    // Compute Z-gradient: interpolate in x and y, differentiate in z
+    {
+        std::array<T, 4> yInterp;
+        for (int yOffset = -1; yOffset <= 2; ++yOffset)
+        {
+            int y = floorPoint[1] + yOffset;
+
+            std::array<T, 4> xInterp;
+            for (int xOffset = -1; xOffset <= 2; ++xOffset)
+            {
+                int x = floorPoint[0] + xOffset;
+
+                T p_1 = (*this)(x, y, floorPoint[2] - 1);
+                T p0 = (*this)(x, y, floorPoint[2]);
+                T p1 = (*this)(x, y, floorPoint[2] + 1);
+                T p2 = (*this)(x, y, floorPoint[2] + 2);
+
+                xInterp[xOffset + 1] = cubicInterpGradient(p_1, p0, p1, p2, deltaX[2]);
+            }
+
+            yInterp[yOffset + 1] = cubicInterp(xInterp[0], xInterp[1], xInterp[2], xInterp[3], deltaX[0]);
+        }
+
+        grad[2] = cubicInterp(yInterp[0], yInterp[1], yInterp[2], yInterp[3], deltaX[1]);
+    }
+
+    return grad / this->dx();
+}
+
+template <typename T>
 void ScalarGrid<T>::drawGrid(const std::string& label) const
 {
     VecVec3d segments;
@@ -459,7 +631,6 @@ void ScalarGrid<T>::drawCellSamplePoint(const std::string& label, const Vec3i& c
                                         double sampleSize) const
 {
     VecVec3d samplePoints;
-    Vec3d worldPoint;
 
     switch (mySampleType)
     {

@@ -1,5 +1,7 @@
 #include "GeometricMultigridOperators.h"
 
+#include <atomic>
+
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_reduce.h"
 #include "tbb/parallel_sort.h"
@@ -967,11 +969,11 @@ bool unitTestCoarsening(const UniformGrid<CellLabels>& coarseCellLabels,
 	}
 
 	{
-		bool testPassed = true;
+		std::atomic<bool> testPassed(true);
 
 		tbb::parallel_for(tbb::blocked_range<int>(0, fineCellLabels.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 		{
-			if (!testPassed)
+			if (!testPassed.load(std::memory_order_relaxed))
 			{
 				return;
 			}
@@ -986,7 +988,7 @@ bool unitTestCoarsening(const UniformGrid<CellLabels>& coarseCellLabels,
 				{
 					if (coarseCellLabels(coarseCell) != CellLabels::DIRICHLET_CELL)
 					{
-						testPassed = false;
+						testPassed.store(false, std::memory_order_relaxed);
 						return;
 					}
 				}
@@ -997,24 +999,24 @@ bool unitTestCoarsening(const UniformGrid<CellLabels>& coarseCellLabels,
 					// interior or Dirichlet (if a sibling cell is Dirichlet).
 					if (coarseCellLabels(coarseCell) == CellLabels::EXTERIOR_CELL)
 					{
-						testPassed = false;
+						testPassed.store(false, std::memory_order_relaxed);
 						return;
 					}
 				}
 			}
 		});
 
-		if (!testPassed)
+		if (!testPassed.load(std::memory_order_relaxed))
 		{
 			return false;
 		}
 	}
 	{
-		bool testPassed = true;
+		std::atomic<bool> testPassed(true);
 
 		tbb::parallel_for(tbb::blocked_range<int>(0, coarseCellLabels.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
 		{
-			if (!testPassed)
+			if (!testPassed.load(std::memory_order_relaxed))
 			{
 				return;
 			}
@@ -1053,7 +1055,7 @@ bool unitTestCoarsening(const UniformGrid<CellLabels>& coarseCellLabels,
 				{
 					if (!foundDirichletChild)
 					{
-						testPassed = false;
+						testPassed.store(false, std::memory_order_relaxed);
 					}
 				}
 				else if (coarseLabel == CellLabels::INTERIOR_CELL ||
@@ -1061,20 +1063,20 @@ bool unitTestCoarsening(const UniformGrid<CellLabels>& coarseCellLabels,
 				{
 					if (foundDirichletChild || !foundInteriorChild)
 					{
-						testPassed = false;
+						testPassed.store(false, std::memory_order_relaxed);
 					}
 				}
 				else if (coarseLabel == CellLabels::EXTERIOR_CELL)
 				{
 					if (foundDirichletChild || foundInteriorChild || !foundExteriorChild)
 					{
-						testPassed = false;
+						testPassed.store(false, std::memory_order_relaxed);
 					}
 				}
 			}
 		});
 		
-		if (!testPassed)
+		if (!testPassed.load(std::memory_order_relaxed))
 		{
 			return false;
 		}

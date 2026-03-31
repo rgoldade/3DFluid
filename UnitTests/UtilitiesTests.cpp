@@ -327,3 +327,201 @@ TEST(UTILITIES_TESTS, POINT_TO_TRIANGLE_DISTANCE_BOUNDS_TEST)
 		EXPECT_LE((vb - vp).norm(), minVertexDist);
 	}
 }
+
+TEST(UTILITIES_TESTS, LERP_TEST)
+{
+	EXPECT_DOUBLE_EQ(lerp(0., 1., 0.), 0.);
+	EXPECT_DOUBLE_EQ(lerp(0., 1., 1.), 1.);
+	EXPECT_DOUBLE_EQ(lerp(0., 1., 0.5), 0.5);
+	EXPECT_DOUBLE_EQ(lerp(2., 4., 0.25), 2.5);
+}
+
+TEST(UTILITIES_TESTS, TRILERP_CONVERGENCE_TEST)
+{
+	auto testFunc = [](const Vec3d& p) -> double
+	{
+		return std::sin(PI * p[0]) * std::sin(PI * p[1]) * std::sin(PI * p[2]);
+	};
+
+	int baseN = 8;
+	int testSize = 4;
+	std::vector<double> errors;
+
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		int N = baseN * int(std::pow(2, testIndex));
+		double h = 1. / double(N);
+
+		double maxError = 0;
+		for (int i = 0; i < N; ++i)
+			for (int j = 0; j < N; ++j)
+				for (int k = 0; k < N; ++k)
+				{
+					Vec3d p = (Vec3d(i, j, k) + Vec3d::Constant(0.5)) * h;
+
+					double v000 = testFunc(Vec3d(i, j, k) * h);
+					double v100 = testFunc(Vec3d(i + 1, j, k) * h);
+					double v010 = testFunc(Vec3d(i, j + 1, k) * h);
+					double v110 = testFunc(Vec3d(i + 1, j + 1, k) * h);
+					double v001 = testFunc(Vec3d(i, j, k + 1) * h);
+					double v101 = testFunc(Vec3d(i + 1, j, k + 1) * h);
+					double v011 = testFunc(Vec3d(i, j + 1, k + 1) * h);
+					double v111 = testFunc(Vec3d(i + 1, j + 1, k + 1) * h);
+
+					double interp = trilerp(v000, v100, v010, v110, v001, v101, v011, v111, 0.5, 0.5, 0.5);
+					double exact = testFunc(p);
+					maxError = std::max(maxError, std::fabs(interp - exact));
+				}
+
+		errors.push_back(maxError);
+	}
+
+	for (int testIndex = 1; testIndex < testSize; ++testIndex)
+	{
+		double errorRatio = errors[testIndex - 1] / errors[testIndex];
+		EXPECT_GT(errorRatio, 3.5);
+	}
+}
+
+TEST(UTILITIES_TESTS, TRILERP_GRADIENT_CONVERGENCE_TEST)
+{
+	auto testFunc = [](const Vec3d& p) -> double
+	{
+		return std::sin(PI * p[0]) * std::sin(PI * p[1]) * std::sin(PI * p[2]);
+	};
+
+	auto testFuncGrad = [](const Vec3d& p) -> Vec3d
+	{
+		return Vec3d(PI * std::cos(PI * p[0]) * std::sin(PI * p[1]) * std::sin(PI * p[2]),
+					 PI * std::sin(PI * p[0]) * std::cos(PI * p[1]) * std::sin(PI * p[2]),
+					 PI * std::sin(PI * p[0]) * std::sin(PI * p[1]) * std::cos(PI * p[2]));
+	};
+
+	int baseN = 8;
+	int testSize = 4;
+	std::vector<double> errors;
+
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		int N = baseN * int(std::pow(2, testIndex));
+		double h = 1. / double(N);
+
+		double maxError = 0;
+		for (int i = 0; i < N; ++i)
+			for (int j = 0; j < N; ++j)
+				for (int k = 0; k < N; ++k)
+				{
+					Vec3d p = (Vec3d(i, j, k) + Vec3d::Constant(0.5)) * h;
+
+					double v000 = testFunc(Vec3d(i, j, k) * h);
+					double v100 = testFunc(Vec3d(i + 1, j, k) * h);
+					double v010 = testFunc(Vec3d(i, j + 1, k) * h);
+					double v110 = testFunc(Vec3d(i + 1, j + 1, k) * h);
+					double v001 = testFunc(Vec3d(i, j, k + 1) * h);
+					double v101 = testFunc(Vec3d(i + 1, j, k + 1) * h);
+					double v011 = testFunc(Vec3d(i, j + 1, k + 1) * h);
+					double v111 = testFunc(Vec3d(i + 1, j + 1, k + 1) * h);
+
+					Vec3d interpGrad = trilerpGradient(v000, v100, v010, v110, v001, v101, v011, v111, 0.5, 0.5, 0.5) / h;
+					Vec3d exactGrad = testFuncGrad(p);
+					maxError = std::max(maxError, (interpGrad - exactGrad).norm());
+				}
+
+		errors.push_back(maxError);
+	}
+
+	for (int testIndex = 1; testIndex < testSize; ++testIndex)
+	{
+		double errorRatio = errors[testIndex - 1] / errors[testIndex];
+		EXPECT_GT(errorRatio, 1.8);
+	}
+}
+
+TEST(UTILITIES_TESTS, CUBIC_INTERP_CONVERGENCE_TEST)
+{
+	auto testFunc = [](double x) -> double
+	{
+		return std::sin(PI * x);
+	};
+
+	int baseN = 8;
+	int testSize = 5;
+	std::vector<double> errors;
+
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		int N = baseN * int(std::pow(2, testIndex));
+		double h = 1. / double(N);
+
+		double maxError = 0;
+		for (int i = 1; i < N - 1; ++i)
+		{
+			for (double fx = 0.1; fx < 1.0; fx += 0.2)
+			{
+				double v_1 = testFunc((i - 1) * h);
+				double v0 = testFunc(i * h);
+				double v1 = testFunc((i + 1) * h);
+				double v2 = testFunc((i + 2) * h);
+
+				double interp = cubicInterp(v_1, v0, v1, v2, fx);
+				double exact = testFunc((i + fx) * h);
+				maxError = std::max(maxError, std::fabs(interp - exact));
+			}
+		}
+
+		errors.push_back(maxError);
+	}
+
+	for (int testIndex = 1; testIndex < testSize; ++testIndex)
+	{
+		double errorRatio = errors[testIndex - 1] / errors[testIndex];
+		EXPECT_GT(errorRatio, 8.);
+	}
+}
+
+TEST(UTILITIES_TESTS, CUBIC_INTERP_GRADIENT_CONVERGENCE_TEST)
+{
+	auto testFunc = [](double x) -> double
+	{
+		return std::sin(PI * x);
+	};
+
+	auto testFuncGrad = [](double x) -> double
+	{
+		return PI * std::cos(PI * x);
+	};
+
+	int baseN = 8;
+	int testSize = 5;
+	std::vector<double> errors;
+
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		int N = baseN * int(std::pow(2, testIndex));
+		double h = 1. / double(N);
+
+		double maxError = 0;
+		for (int i = 1; i < N - 1; ++i)
+		{
+			for (double fx = 0.1; fx < 1.0; fx += 0.2)
+			{
+				double v_1 = testFunc((i - 1) * h);
+				double v0 = testFunc(i * h);
+				double v1 = testFunc((i + 1) * h);
+				double v2 = testFunc((i + 2) * h);
+
+				double interpGrad = cubicInterpGradient(v_1, v0, v1, v2, fx) / h;
+				double exactGrad = testFuncGrad((i + fx) * h);
+				maxError = std::max(maxError, std::fabs(interpGrad - exactGrad));
+			}
+		}
+
+		errors.push_back(maxError);
+	}
+
+	for (int testIndex = 1; testIndex < testSize; ++testIndex)
+	{
+		double errorRatio = errors[testIndex - 1] / errors[testIndex];
+		EXPECT_GT(errorRatio, 3.8);
+	}
+}

@@ -34,8 +34,6 @@ void ViscositySolver(double dt,
         assert((faceSize.array() == surface.size().array()).all());
     }
 
-    int volumeSamples = 3;
-
     ScalarGrid<double> centerVolumes(surface.xform(), surface.size(), 0, ScalarGridSettings::SampleType::CENTER);
     computeSupersampleVolumes(centerVolumes, surface, 3);
 

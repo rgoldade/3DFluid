@@ -239,9 +239,6 @@ FORCE_INLINE Vec3i nodeToCell(const Vec3i& node, int cellIndex)
     return cell;
 }
 
-const Vec3d colours[] = {Vec3d(1, 0, 0), Vec3d(0, 1, 0), Vec3d(0, 0, 1),
-                         Vec3d(1, 1, 0), Vec3d(1, 0, 1), Vec3d(0, 1, 1)};
-
 template <typename Real>
 Real lengthFraction(Real phi0, Real phi1)
 {

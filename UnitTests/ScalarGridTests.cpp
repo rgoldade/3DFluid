@@ -600,3 +600,268 @@ TEST(SCALAR_GRID_TESTS, NODE_GRADIENT_TEST)
 {
 	gradientTest(ScalarGridSettings::SampleType::NODE);
 }
+
+// Cubic interpolation convergence tests
+
+static double cubicInterpolationErrorTest(const Transform& xform, const Vec3i& cellSize, const ScalarGridSettings::SampleType sampleType, const Vec3i& startIndex, const Vec3i& endIndex)
+{
+	ScalarGrid<double> grid(xform, cellSize, sampleType);
+	auto testFunc = [](const Vec3d& point) -> double
+	{
+		return std::sin(PI * point[0]) * std::sin(PI * point[1]) * std::sin(PI * point[2]);
+	};
+
+	tbb::parallel_for(tbb::blocked_range<int>(0, grid.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+	{
+		for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+		{
+			Vec3i coord = grid.unflatten(cellIndex);
+			Vec3d point = grid.indexToWorld(coord.cast<double>());
+			grid(coord) = testFunc(point);
+		}
+	});
+
+	double error = tbb::parallel_reduce(tbb::blocked_range<int>(0, grid.voxelCount(), tbbLightGrainSize), double(0),
+		[&](const tbb::blocked_range<int>& range, double error) -> double
+		{
+			for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+			{
+				Vec3i coord = grid.unflatten(cellIndex);
+
+				if (coord[0] < startIndex[0] || coord[1] < startIndex[1] || coord[2] < startIndex[2] ||
+					coord[0] >= endIndex[0] || coord[1] >= endIndex[1] || coord[2] >= endIndex[2])
+					continue;
+
+				Vec3d startPoint = coord.cast<double>();
+				Vec3d endPoint = (coord + Vec3i::Ones()).cast<double>();
+
+				Vec3d point;
+				for (point[0] = startPoint[0]; point[0] < endPoint[0]; point[0] += .2)
+					for (point[1] = startPoint[1]; point[1] < endPoint[1]; point[1] += .2)
+						for (point[2] = startPoint[2]; point[2] < endPoint[2]; point[2] += .2)
+						{
+							Vec3d worldPoint = grid.indexToWorld(point);
+							double localError = std::fabs(grid.triCubicInterp(worldPoint) - testFunc(worldPoint));
+							error = std::max(error, localError);
+						}
+			}
+
+			return error;
+		},
+		[](double a, double b) -> double
+		{
+			return std::max(a, b);
+		});
+
+	return error;
+}
+
+static void cubicInterpolationTest(const ScalarGridSettings::SampleType sampleType)
+{
+	Vec3d origin = Vec3d::Zero();
+
+	int base_size = 8;
+	Vec3i cellSize = Vec3i::Constant(base_size);
+
+	double dx = 1. / double(base_size);
+
+	int testSize = 3;
+	std::vector<double> errors;
+	Vec3i startIndex = Vec3i::Ones();
+	Vec3i endIndex = cellSize - Vec3i::Ones();
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		Vec3i localCellSize = int(std::pow(2, testIndex)) * cellSize;
+		double localDx = dx / std::pow(2., testIndex);
+		Transform xform(localDx, origin);
+
+		Vec3i localStartIndex = int(std::pow(2, testIndex)) * startIndex;
+		Vec3i localEndIndex = int(std::pow(2, testIndex)) * endIndex;
+
+		double localError = cubicInterpolationErrorTest(xform, localCellSize, sampleType, localStartIndex, localEndIndex);
+		errors.push_back(localError);
+	}
+
+	for (int testIndex = 1; testIndex < testSize; ++testIndex)
+	{
+		double errorRatio = errors[testIndex - 1] / errors[testIndex];
+		EXPECT_GT(errorRatio, 8.);
+	}
+}
+
+TEST(SCALAR_GRID_TESTS, CENTER_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::CENTER);
+}
+
+TEST(SCALAR_GRID_TESTS, XFACE_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::XFACE);
+}
+
+TEST(SCALAR_GRID_TESTS, YFACE_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::YFACE);
+}
+
+TEST(SCALAR_GRID_TESTS, ZFACE_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::ZFACE);
+}
+
+TEST(SCALAR_GRID_TESTS, XEDGE_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::XEDGE);
+}
+
+TEST(SCALAR_GRID_TESTS, YEDGE_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::YEDGE);
+}
+
+TEST(SCALAR_GRID_TESTS, ZEDGE_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::ZEDGE);
+}
+
+TEST(SCALAR_GRID_TESTS, NODE_CUBIC_INTERPOLATION_TEST)
+{
+	cubicInterpolationTest(ScalarGridSettings::SampleType::NODE);
+}
+
+// Cubic gradient convergence tests
+
+static double cubicGradientErrorTest(const Transform& xform, const Vec3i& cellSize, const ScalarGridSettings::SampleType sampleType, const Vec3i& startIndex, const Vec3i& endIndex)
+{
+	ScalarGrid<double> grid(xform, cellSize, sampleType);
+	auto testFunc = [](const Vec3d& point) -> double
+	{
+		return std::sin(PI * point[0]) * std::sin(PI * point[1]) * std::sin(PI * point[2]);
+	};
+
+	auto testFuncGradient = [](const Vec3d& point) -> Vec3d
+	{
+		return Vec3d(PI * std::cos(PI * point[0]) * std::sin(PI * point[1]) * std::sin(PI * point[2]),
+					 PI * std::sin(PI * point[0]) * std::cos(PI * point[1]) * std::sin(PI * point[2]),
+					 PI * std::sin(PI * point[0]) * std::sin(PI * point[1]) * std::cos(PI * point[2]));
+	};
+
+	tbb::parallel_for(tbb::blocked_range<int>(0, grid.voxelCount(), tbbLightGrainSize), [&](const tbb::blocked_range<int>& range)
+	{
+		for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+		{
+			Vec3i coord = grid.unflatten(cellIndex);
+			Vec3d point = grid.indexToWorld(coord.cast<double>());
+			grid(coord) = testFunc(point);
+		}
+	});
+
+	double error = tbb::parallel_reduce(tbb::blocked_range<int>(0, grid.voxelCount(), tbbLightGrainSize), double(0),
+		[&](const tbb::blocked_range<int>& range, double error) -> double
+		{
+			for (int cellIndex = range.begin(); cellIndex != range.end(); ++cellIndex)
+			{
+				Vec3i coord = grid.unflatten(cellIndex);
+
+				if (coord[0] < startIndex[0] || coord[1] < startIndex[1] || coord[2] < startIndex[2] ||
+					coord[0] >= endIndex[0] || coord[1] >= endIndex[1] || coord[2] >= endIndex[2])
+					continue;
+
+				Vec3d startPoint = coord.cast<double>();
+				Vec3d endPoint = (coord + Vec3i::Ones()).cast<double>();
+
+				Vec3d point;
+				for (point[0] = startPoint[0]; point[0] < endPoint[0]; point[0] += .2)
+					for (point[1] = startPoint[1]; point[1] < endPoint[1]; point[1] += .2)
+						for (point[2] = startPoint[2]; point[2] < endPoint[2]; point[2] += .2)
+						{
+							Vec3d worldPoint = grid.indexToWorld(point);
+							Vec3d cubicGrad = grid.triCubicGradient(worldPoint);
+							Vec3d funcGrad = testFuncGradient(worldPoint);
+							double localError = (cubicGrad - funcGrad).norm();
+							error = std::max(localError, error);
+						}
+			}
+
+			return error;
+		},
+		[](double a, double b) -> double
+		{
+			return std::max(a, b);
+		});
+
+	return error;
+}
+
+static void cubicGradientTest(const ScalarGridSettings::SampleType sampleType)
+{
+	Vec3d origin = Vec3d::Zero();
+
+	int base_size = 8;
+	Vec3i cellSize = Vec3i::Constant(base_size);
+
+	double dx = 1. / double(base_size);
+
+	int testSize = 3;
+	std::vector<double> errors;
+	Vec3i startIndex = Vec3i::Ones();
+	Vec3i endIndex = cellSize - Vec3i::Ones();
+	for (int testIndex = 0; testIndex < testSize; ++testIndex)
+	{
+		Vec3i localCellSize = int(std::pow(2, testIndex)) * cellSize;
+		double localDx = dx / std::pow(2., testIndex);
+		Transform xform(localDx, origin);
+
+		Vec3i localStartIndex = int(std::pow(2, testIndex)) * startIndex;
+		Vec3i localEndIndex = int(std::pow(2, testIndex)) * endIndex;
+
+		double localError = cubicGradientErrorTest(xform, localCellSize, sampleType, localStartIndex, localEndIndex);
+		errors.push_back(localError);
+	}
+
+	for (int testIndex = 1; testIndex < testSize; ++testIndex)
+	{
+		double errorRatio = errors[testIndex - 1] / errors[testIndex];
+		EXPECT_GT(errorRatio, 3.85);
+	}
+}
+
+TEST(SCALAR_GRID_TESTS, CENTER_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::CENTER);
+}
+
+TEST(SCALAR_GRID_TESTS, XFACE_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::XFACE);
+}
+
+TEST(SCALAR_GRID_TESTS, YFACE_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::YFACE);
+}
+
+TEST(SCALAR_GRID_TESTS, ZFACE_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::ZFACE);
+}
+
+TEST(SCALAR_GRID_TESTS, XEDGE_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::XEDGE);
+}
+
+TEST(SCALAR_GRID_TESTS, YEDGE_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::YEDGE);
+}
+
+TEST(SCALAR_GRID_TESTS, ZEDGE_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::ZEDGE);
+}
+
+TEST(SCALAR_GRID_TESTS, NODE_CUBIC_GRADIENT_TEST)
+{
+	cubicGradientTest(ScalarGridSettings::SampleType::NODE);
+}

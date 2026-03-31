@@ -1,5 +1,7 @@
 #include "GeometricMultigridPoissonSolver.h"
 
+#include <atomic>
+
 #include "tbb/blocked_range.h"
 #include "tbb/parallel_for.h"
 
@@ -110,11 +112,11 @@ GeometricMultigridPoissonSolver::GeometricMultigridPoissonSolver(const UniformGr
 
 	auto checkSolvableCell = [](const UniformGrid<MGCellLabels>& testGrid) -> bool
 	{
-		bool hasSolvableCell = false;
+		std::atomic<bool> hasSolvableCell(false);
 
 		tbb::parallel_for(tbb::blocked_range<int>(0, testGrid.voxelCount()), [&](const tbb::blocked_range<int>& range)
 		{
-			if (hasSolvableCell)
+			if (hasSolvableCell.load(std::memory_order_relaxed))
 			{
 				return;
 			}
@@ -126,12 +128,13 @@ GeometricMultigridPoissonSolver::GeometricMultigridPoissonSolver(const UniformGr
 				if (testGrid(cell) == MGCellLabels::INTERIOR_CELL ||
 					testGrid(cell) == MGCellLabels::BOUNDARY_CELL)
 				{
-					hasSolvableCell = true;
+					hasSolvableCell.store(true, std::memory_order_relaxed);
+					return;
 				}
 			}
 		});
 
-		return hasSolvableCell;
+		return hasSolvableCell.load(std::memory_order_relaxed);
 	};
 
 	assert(checkSolvableCell(myDomainLabels[0]));

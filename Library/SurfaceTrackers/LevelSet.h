@@ -53,9 +53,18 @@ public:
     template <typename VelocityField>
     void advectSurface(double dt, const VelocityField& velocity, IntegrationOrder order);
 
-    FORCE_INLINE Vec3d normal(const Vec3d& worldPoint) const
+    FORCE_INLINE Vec3d normal(const Vec3d& worldPoint, bool useLinearInterp = true) const
     {
-        Vec3d normal = myPhiGrid.triLerpGradient(worldPoint);
+        Vec3d normal;
+
+        if (useLinearInterp)
+        {
+            normal = myPhiGrid.triLerpGradient(worldPoint);
+        }
+        else
+        {
+            normal = myPhiGrid.triCubicGradient(worldPoint);
+        }
 
 		if ((normal.array() == Vec3d::Zero().array()).all()) return Vec3d::Zero();
 
@@ -78,6 +87,8 @@ public:
     FORCE_INLINE Vec3d worldToIndex(const Vec3d& worldPoint) const { return myPhiGrid.worldToIndex(worldPoint); }
 
     FORCE_INLINE double triLerp(const Vec3d& worldPoint) const { return myPhiGrid.triLerp(worldPoint); }
+
+    FORCE_INLINE double triCubicInterp(const Vec3d& worldPoint) const { return myPhiGrid.triCubicInterp(worldPoint); }
 
     FORCE_INLINE double& operator()(int i, int j, int k) { return myPhiGrid(i, j, k); }
     FORCE_INLINE double& operator()(const Vec3i& cell) { return myPhiGrid(cell); }
@@ -125,7 +136,7 @@ template<typename VelocityField>
 void LevelSet::advectSurface(double dt, const VelocityField& velocity, IntegrationOrder order)
 {
 	ScalarGrid<double> tempPhiGrid = myPhiGrid;
-	advectField(dt, tempPhiGrid, myPhiGrid, velocity, order);
+	advectField(dt, tempPhiGrid, myPhiGrid, velocity, order, InterpolationOrder::CUBIC);
 
 	std::swap(tempPhiGrid, myPhiGrid);
 }

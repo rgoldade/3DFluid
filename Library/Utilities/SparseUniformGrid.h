@@ -37,7 +37,7 @@ public:
 		{
 			assert(myGrid.size() == 1);
 			const T value = myGrid(0);
-			myGrid = VectorXt<T>::Constant(std::pow(TILE_SIZE, 3), value);
+			myGrid = VectorXt<T>::Constant(TILE_SIZE * TILE_SIZE * TILE_SIZE, value);
 		}
 	}
 
@@ -89,7 +89,7 @@ public:
 
 	FORCE_INLINE Vec3i unflatten(int index) const
 	{
-		assert(index >= 0 && index < std::pow(TILE_SIZE, 3));
+		assert(index >= 0 && index < TILE_SIZE * TILE_SIZE * TILE_SIZE);
 
 		Vec3i coord;
 		coord[2] = index % TILE_SIZE;

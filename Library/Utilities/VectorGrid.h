@@ -82,6 +82,10 @@ public:
                 myGrids[0] = ScalarGrid<T>(xform, size, initialValue[0], ScalarSampleType::XEDGE, borderType);
                 myGrids[1] = ScalarGrid<T>(xform, size, initialValue[1], ScalarSampleType::YEDGE, borderType);
                 myGrids[2] = ScalarGrid<T>(xform, size, initialValue[2], ScalarSampleType::ZEDGE, borderType);
+                break;
+            default:
+                assert(false);
+                break;
         }
     }
 
@@ -129,6 +133,15 @@ public:
 
     T triLerp(double x, double y, double z, int axis) const { return triLerp(Vec3d(x, y, z), axis); }
     T triLerp(const Vec3d& samplePoint, int axis) const { return myGrids[axis].triLerp(samplePoint); }
+
+    Vec3t<T> triCubicInterp(double x, double y, double z) const { return triCubicInterp(Vec3d(x, y, z)); }
+    Vec3t<T> triCubicInterp(const Vec3d& samplePoint) const
+    {
+        return Vec3t<T>(triCubicInterp(samplePoint, 0), triCubicInterp(samplePoint, 1), triCubicInterp(samplePoint, 2));
+    }
+
+    T triCubicInterp(double x, double y, double z, int axis) const { return triCubicInterp(Vec3d(x, y, z), axis); }
+    T triCubicInterp(const Vec3d& samplePoint, int axis) const { return myGrids[axis].triCubicInterp(samplePoint); }
 
     // World space vs. index space converters need to be done at the
     // underlying scalar grid level because the alignment of the three
@@ -324,6 +337,6 @@ void VectorGrid<T>::drawSuperSampledValuesPlane(const std::string& label, Axis g
     myGrids[gridAxisInt].drawSupersampledValuesPlane(label, planeAxis, position, sampleRadius, samples, sampleSize);
 }
 
-}  // namespace FluidSim3D::Utilities
+}
 
 #endif

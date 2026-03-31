@@ -804,8 +804,8 @@ static void symmetryTest(bool useComplexDomain, bool useSolidSphere, int gridSiz
                         {
                             Vec3i adjacentCell = cellToCell(cell, axis, direction);
 
-                            auto cellLabels = coarseDomainLabels(adjacentCell);
-                            if (cellLabels == CellLabels::INTERIOR_CELL || cellLabels == CellLabels::BOUNDARY_CELL)
+                            CellLabels adjacentCellLabels = coarseDomainLabels(adjacentCell);
+                            if (adjacentCellLabels == CellLabels::INTERIOR_CELL || adjacentCellLabels == CellLabels::BOUNDARY_CELL)
                             {
                                 int adjacentIndex = directSolverIndices(adjacentCell);
                                 ASSERT_TRUE(adjacentIndex >= 0);
@@ -813,7 +813,7 @@ static void symmetryTest(bool useComplexDomain, bool useSolidSphere, int gridSiz
                                 sparseElements.emplace_back(index, adjacentIndex, -gridScale);
                                 ++diagonal;
                             }
-                            else if (cellLabels == CellLabels::DIRICHLET_CELL)
+                            else if (adjacentCellLabels == CellLabels::DIRICHLET_CELL)
                                 ++diagonal;
                         }
                     }

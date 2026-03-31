@@ -627,7 +627,7 @@ static void testJitterMesh(const TriMesh& mesh, double dx)
 
         vertex = surfaceGrid.findSurface(vertex, 100, 1e-5);
 
-        EXPECT_TRUE(isNearlyEqual(surfaceGrid.triLerp(vertex), 0., 1e-5, false)) << "Trilerp: " << surfaceGrid.triLerp(vertex);
+        EXPECT_TRUE(isNearlyEqual(surfaceGrid.triCubicInterp(vertex), 0., 1e-5, false)) << "TriCubicInterp: " << surfaceGrid.triCubicInterp(vertex);
     }
 }
 

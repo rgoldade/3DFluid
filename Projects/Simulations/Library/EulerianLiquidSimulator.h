@@ -71,7 +71,7 @@ public:
     void runTimestep(double dt);
 
     // Useful for CFL
-    double maxVelocityMagnitude() { return myLiquidVelocity.maxMagnitude(); }
+    double maxVelocityMagnitude() const { return myLiquidVelocity.maxMagnitude(); }
 
     // Rendering tools
     void drawGrid(const std::string& label, bool onlyDrawNarrowBand = false) const;

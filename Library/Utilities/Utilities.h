@@ -215,6 +215,14 @@ S cubicInterp(const S& value_1, const S& value0, const S& value1, const S& value
                      (-T(3.0) * cubefx + T(4.0) * sqrfx + fx) * value1 + (cubefx - sqrfx) * value2);
 };
 
+template <typename S, typename T>
+S cubicInterpGradient(const S& value_1, const S& value0, const S& value1, const S& value2, const T& fx)
+{
+    T sqrfx = fx * fx;
+    return T(0.5) * ((-T(3.0) * sqrfx + T(4.0) * fx - 1) * value_1 + (T(9.0) * sqrfx - T(10.0) * fx) * value0 +
+                     (-T(9.0) * sqrfx + T(8.0) * fx + 1) * value1 + (T(3.0) * sqrfx - T(2.0) * fx) * value2);
+};
+
 Vec3d computeBarycenters(const Vec3d& vb, const Vec3d& v0, const Vec3d& v1, const Vec3d& v2);
 
 // Helper function to project a point to a triangle in 3-D
